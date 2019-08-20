@@ -298,20 +298,20 @@ namespace NHM.DeviceMonitoring
         {
             try
             {
-                uint minLimit = 0;
-                uint maxLimit = 0;
-                var ret = NvmlNativeMethods.nvmlDeviceGetPowerManagementLimitConstraints(_nvmlDevice, ref minLimit, ref maxLimit);
-                if (ret != nvmlReturn.Success)
-                    throw new Exception($"NVML nvmlDeviceGetPowerManagementLimitConstraints failed with status: {ret}");
+                //uint minLimit = 0;
+                //uint maxLimit = 0;
+                //var ret = NvmlNativeMethods.nvmlDeviceGetPowerManagementLimitConstraints(_nvmlDevice, ref minLimit, ref maxLimit);
+                //if (ret != nvmlReturn.Success)
+                //    throw new Exception($"NVML nvmlDeviceGetPowerManagementLimitConstraints failed with status: {ret}");
 
-                uint defaultLimit = 0;
-                ret = NvmlNativeMethods.nvmlDeviceGetPowerManagementDefaultLimit(_nvmlDevice, ref defaultLimit);
-                if (ret != nvmlReturn.Success)
-                    throw new Exception($"NVML nvmlDeviceGetPowerManagementDefaultLimit failed with status: {ret}");
+                //uint defaultLimit = 0;
+                //ret = NvmlNativeMethods.nvmlDeviceGetPowerManagementDefaultLimit(_nvmlDevice, ref defaultLimit);
+                //if (ret != nvmlReturn.Success)
+                //    throw new Exception($"NVML nvmlDeviceGetPowerManagementDefaultLimit failed with status: {ret}");
 
-                var limit = minLimit + (defaultLimit - minLimit) * GetUintFromPowerLevel(level) / 2;
-                var tdpPerc = (limit * 100.0 / defaultLimit);
-                return SetTdp(tdpPerc, defaultLimit);
+                var limit = _minPowerLimit + (_defaultPowerLimit - _minPowerLimit) * GetUintFromPowerLevel(level) / 2;
+                var tdpPerc = (limit * 100.0 / _defaultPowerLimit);
+                return SetTdp(tdpPerc, _defaultPowerLimit);
             }
             catch (Exception e)
             {
