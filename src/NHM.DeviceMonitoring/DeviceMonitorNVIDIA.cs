@@ -48,7 +48,26 @@ namespace NHM.DeviceMonitoring
 
             try
             {
-                trySetPowerInfo(); // new function() more cleaner code
+                var powerInfo = new NvGPUPowerInfo
+                {
+                    Version = NVAPI.GPU_POWER_INFO_VER,
+                    Entries = new NvGPUPowerInfoEntry[4]
+                };
+
+                var ret = NVAPI.NvAPI_DLL_ClientPowerPoliciesGetInfo(_nvHandle, ref powerInfo);
+                if (ret != NvStatus.OK)
+                    throw new Exception(ret.ToString());
+
+                Debug.Assert(powerInfo.Entries.Length == 4);
+
+                if (powerInfo.Entries[0].MinPower == 0 || powerInfo.Entries[0].MaxPower == 0)
+                {
+                    throw new Exception("Power control not available!");
+                }
+
+                _minPowerLimit = powerInfo.Entries[0].MinPower;
+                _maxPowerLimit = powerInfo.Entries[0].MaxPower;
+                _defaultPowerLimit = powerInfo.Entries[0].DefPower;
 
                 PowerLimitsEnabled = true;
                 // set to high by default
@@ -63,67 +82,48 @@ namespace NHM.DeviceMonitoring
                 }
                 else
                 {
-                    PowerLevel = PowerLevel.Disabled; // what the purpose of this?
+                    PowerLevel = PowerLevel.Disabled;
                 }
             }
             catch (Exception e)
             {
                 Logger.Error("NVML", $"Getting power info failed with message \"{e.Message}\", disabling power setting");
                 PowerLimitsEnabled = false;
-                PowerLevel = PowerLevel.Disabled;
             }
         }
-        private void trySetPowerInfo()
-        {
 
-            //var powerInfo = new NvGPUPowerInfo
-            //{
-            //    Version = NVAPI.GPU_POWER_INFO_VER,
-            //    Entries = new NvGPUPowerInfoEntry[4]
-            //};
-            /* Original ret value */
-            //var ret = NVAPI.NvAPI_DLL_ClientPowerPoliciesGetInfo(_nvHandle, ref powerInfo);
-            var _min = 0u;
-            var _max = 0u;
-            var ret = NvmlNativeMethods.nvmlDeviceGetPowerManagementLimitConstraints(_nvmlDevice, ref _min, ref _max);
-            if (ret != nvmlReturn.Success)
-                throw new Exception(ret.ToString());
-            var _defaultPwr = 0u;
-            ret = NvmlNativeMethods.nvmlDeviceGetPowerManagementDefaultLimit(_nvmlDevice, ref _defaultPwr);
-            if (ret != nvmlReturn.Success)
-                throw new Exception(ret.ToString());
-
-            //Debug.Assert(powerInfo.Entries.Length == 4);
-
-            //if (powerInfo.Entries[0].MinPower == 0 || powerInfo.Entries[0].MaxPower == 0)
-            //{
-            //    throw new Exception("Power control not available!");
-            //}
-
-            //_minPowerLimit = powerInfo.Entries[0].MinPower;
-            //_maxPowerLimit = powerInfo.Entries[0].MaxPower;
-            //_defaultPowerLimit = powerInfo.Entries[0].DefPower;
-
-            _minPowerLimit = _min;
-            _maxPowerLimit = _max;
-            _defaultPowerLimit = _defaultPwr;
-
-        }
         public void ResetHandles(NvapiNvmlInfo info)
         {
             _nvHandle = info.nvHandle;
             _nvmlDevice = info.nvmlHandle;
-            if (PowerLevel != PowerLevel.Disabled)
+
+            try
             {
-                try
+                var powerInfo = new NvGPUPowerInfo
                 {
-                    trySetPowerInfo(); // new function make cleaner code
-                }
-                catch (Exception e)
+                    Version = NVAPI.GPU_POWER_INFO_VER,
+                    Entries = new NvGPUPowerInfoEntry[4]
+                };
+
+                var ret = NVAPI.NvAPI_DLL_ClientPowerPoliciesGetInfo(_nvHandle, ref powerInfo);
+                if (ret != NvStatus.OK)
+                    throw new Exception(ret.ToString());
+
+                Debug.Assert(powerInfo.Entries.Length == 4);
+
+                if (powerInfo.Entries[0].MinPower == 0 || powerInfo.Entries[0].MaxPower == 0)
                 {
-                    Logger.Error("NVML", $"Getting power info failed with message \"{e.Message}\", disabling power setting");
-                    PowerLimitsEnabled = false;
+                    throw new Exception("Power control not available!");
                 }
+
+                _minPowerLimit = powerInfo.Entries[0].MinPower;
+                _maxPowerLimit = powerInfo.Entries[0].MaxPower;
+                _defaultPowerLimit = powerInfo.Entries[0].DefPower;
+            }
+            catch (Exception e)
+            {
+                Logger.Error("NVML", $"Getting power info failed with message \"{e.Message}\", disabling power setting");
+                PowerLimitsEnabled = false;
             }
         }
 
@@ -142,9 +142,7 @@ namespace NHM.DeviceMonitoring
                         {
                             var rates = new nvmlUtilization();
                             var ret = NvmlNativeMethods.nvmlDeviceGetUtilizationRates(_nvmlDevice, ref rates);
-                            if (ret == nvmlReturn.NotSupported)
-                                return load;
-                            if( ret == nvmlReturn.Unknown)
+                            if (ret != nvmlReturn.Success)
                                 throw new Exception($"NVML get load failed with code: {ret}");
 
                             load = (int)rates.gpu;
@@ -179,11 +177,8 @@ namespace NHM.DeviceMonitoring
                             var utemp = 0u;
                             var ret = NvmlNativeMethods.nvmlDeviceGetTemperature(_nvmlDevice, nvmlTemperatureSensors.Gpu,
                                 ref utemp);
-                            if (ret == nvmlReturn.NotSupported)
-                                return temp;
-                            if (ret == nvmlReturn.Unknown)
+                            if (ret != nvmlReturn.Success)
                                 throw new Exception($"NVML get temp failed with code: {ret}");
-                            
 
                             temp = utemp;
                         }
@@ -245,9 +240,7 @@ namespace NHM.DeviceMonitoring
                         {
                             var power = 0u;
                             var ret = NvmlNativeMethods.nvmlDeviceGetPowerUsage(_nvmlDevice, ref power);
-                            if (ret == nvmlReturn.NotSupported)
-                                return power;
-                            if(ret == nvmlReturn.Unknown)
+                            if (ret != nvmlReturn.Success)
                                 throw new Exception($"NVML power get failed with status: {ret}");
 
                             return power * 0.001;
