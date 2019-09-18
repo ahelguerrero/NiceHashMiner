@@ -1,29 +1,36 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
+using NHM.Common;
 
 namespace NiceHashMiner.Forms.Components
 {
-    public partial class StartupLoadingControl : UserControl
+    public partial class StartupLoadingControl : UserControl, IStartupLoader
     {
         public StartupLoadingControl(string title = null)
         {
             InitializeComponent();
-            if (!string.IsNullOrEmpty(title)) LoadTitleText = title;
-            ShowSecondProgressBar = false;
+            if (!string.IsNullOrEmpty(title)) PrimaryTitle = title;
+            SecondaryVisible = false;
             label_LoadingTitle.Location = new Point((Size.Width - label_LoadingTitle.Size.Width) / 2,
                 label_LoadingTitle.Location.Y);
+
+            PrimaryProgress = new Progress<(string loadMessageText, int perc)>(p =>
+            {
+                Progress = p.perc;
+                LoadMessageText = p.loadMessageText;
+            });
+
+            SecondaryProgress = new Progress<(string loadMessageText, int perc)>(p =>
+            {
+                ProgressSecond = p.perc;
+                LoadMessageTextSecond = p.loadMessageText;
+            });
 
             FormHelpers.TranslateFormControls(this);
         }
 
-        public string LoadTitleText
+        public string PrimaryTitle
         {
             get
             {
@@ -65,7 +72,7 @@ namespace NiceHashMiner.Forms.Components
         bool _secondProgressVisible = true;
         const int _hiddenHeight = 76;
         const int _visibleHeight = 146;
-        public bool ShowSecondProgressBar
+        public bool SecondaryVisible
         {
             get
             {
@@ -75,12 +82,12 @@ namespace NiceHashMiner.Forms.Components
             {
                 if (_secondProgressVisible == value) return;
                 _secondProgressVisible = value;
-                this.Height = _secondProgressVisible ? _visibleHeight : _hiddenHeight;
+                Height = _secondProgressVisible ? _visibleHeight : _hiddenHeight;
             }
         }
 
 
-        public string LoadTitleTextSecond
+        public string SecondaryTitle
         {
             get
             {
@@ -117,5 +124,9 @@ namespace NiceHashMiner.Forms.Components
                 label_LoadStepMessageText2.Invalidate();
             }
         }
+
+        public IProgress<(string, int)> PrimaryProgress { get; private set; }
+
+        public IProgress<(string, int)> SecondaryProgress { get; private set; }
     }
 }

@@ -1,11 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace NiceHashMiner.Forms.Components
@@ -132,6 +125,7 @@ namespace NiceHashMiner.Forms.Components
             }
             set
             {
+                if (progressBar1.Visible == value) return;
                 progressBar1.Value = 0;
                 progressBar1.Visible = value;
             }
@@ -169,6 +163,7 @@ namespace NiceHashMiner.Forms.Components
             }
             set
             {
+                if (labelStatus.Visible == value) return;
                 labelStatus.Visible = value;
             }
         }

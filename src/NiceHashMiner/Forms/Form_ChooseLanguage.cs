@@ -1,7 +1,7 @@
-﻿using NiceHashMiner.Configs;
-using System;
+﻿using System;
 using System.Windows.Forms;
-using NHM.Common.Enums;
+using NHMCore;
+using NHMCore.Configs;
 
 namespace NiceHashMiner.Forms
 {
@@ -11,7 +11,7 @@ namespace NiceHashMiner.Forms
         {
             InitializeComponent();
             CenterToScreen();
-            Icon = Properties.Resources.logo;
+            Icon = NHMCore.Properties.Resources.logo;
             // Add language selections list
             var langs = Translations.GetAvailableLanguagesNames();
 

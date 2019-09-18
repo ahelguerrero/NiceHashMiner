@@ -1,11 +1,8 @@
-﻿using NiceHashMiner.Interfaces.DataVisualizer;
-using NiceHashMiner.Interfaces.StateSetters;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
 using System.Windows.Forms;
+using NHMCore;
+using NHMCore.Interfaces.DataVisualizer;
+using NHMCore.Interfaces.StateSetters;
 
 namespace NiceHashMiner.Forms
 {

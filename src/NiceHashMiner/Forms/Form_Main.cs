@@ -1,10 +1,4 @@
-﻿using NiceHashMiner.Configs;
-using NiceHashMiner.Forms;
-using NiceHashMiner.Interfaces.DataVisualizer;
-using NiceHashMiner.Mining;
-using NiceHashMiner.Mining.IdleChecking;
-using NiceHashMiner.Stats;
-using NiceHashMiner.Switching;
+//#define SHOW_TDP_SETTINGS
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -12,24 +6,30 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
-using static NiceHashMiner.Translations; // consider using static
+
+using Logger = NHM.Common.Logger;
+
+using NHMCore;
+using NHMCore.Configs;
+using NHMCore.Interfaces.DataVisualizer;
+using NHMCore.Mining;
+using NHMCore.Mining.Plugins;
+using NHMCore.Mining.IdleChecking;
+using NHMCore.Stats;
+using NHMCore.Switching;
+using NHMCore.Utils;
+
+using static NHMCore.Translations;
+
+using NiceHashMiner.Forms;
+using NiceHashMiner.Forms.Components;
 
 namespace NiceHashMiner
 {
-    using NiceHashMiner.Forms.Components;
-    using NiceHashMiner.Mining.Plugins;
-    using NiceHashMiner.Utils;
-    using NHM.Common;
-    using NHM.Common.Enums;
-    using System.IO;
-
     public partial class Form_Main : Form, FormHelpers.ICustomTranslate, IVersionDisplayer, IBalanceBTCDisplayer, IBalanceFiatDisplayer, IGlobalMiningRateDisplayer, IMiningProfitabilityDisplayer, INoInternetConnectionDisplayer
     {
         private bool _showWarningNiceHashData;
-
         private bool _exitCalled = false;
-
-        private Form_MinerPlugins _minerPluginsForm;
 
         //private bool _isDeviceDetectionInitialized = false;
 
@@ -42,7 +42,7 @@ namespace NiceHashMiner
         {
             InitializeComponent();
             CenterToScreen();
-            Icon = Properties.Resources.logo;
+            Icon = NHMCore.Properties.Resources.logo;
             errorWarningProvider2.Icon = new IconEx(IconEx.SystemIcons.Warning, new Size(16, 16)).Icon; // SystemIcons.Warning;
             labelWarningNotProfitableOrNoIntenret.Visible = false;
             InitElevationWarning();
@@ -64,7 +64,7 @@ namespace NiceHashMiner
 
             Text = ApplicationStateManager.Title;
 
-            notifyIcon1.Icon = Properties.Resources.logo;
+            notifyIcon1.Icon = NHMCore.Properties.Resources.logo;
             notifyIcon1.Text = Application.ProductName + " v" + Application.ProductVersion +
                                "\n" + Tr("Double-click to restore...");
 
@@ -201,12 +201,7 @@ namespace NiceHashMiner
 
         private void InitElevationWarning()
         {
-            var isEnabledFeature = false;
-            // Enable this only for new platform
-#if TESTNET || TESTNETDEV || PRODUCTION_NEW
-            isEnabledFeature = true;
-#endif
-            if (!Helpers.IsElevated && isEnabledFeature && !ConfigManager.GeneralConfig.DisableDevicePowerModeSettings)
+            if (!Helpers.IsElevated && !ConfigManager.GeneralConfig.DisableDevicePowerModeSettings)
             {
                 errorWarningProvider2.SetError(linkLabelAdminPrivs, Tr("Disabled NVIDIA power mode settings due to insufficient permissions. If you want to use this feature you need to run as Administrator."));
                 linkLabelAdminPrivs.Click += (s, e) =>
@@ -235,7 +230,7 @@ namespace NiceHashMiner
             ExchangeRateApi.ActiveDisplayCurrency = ConfigManager.GeneralConfig.DisplayCurrency;
 
             // init factor for Time Unit
-            TimeFactor.UpdateTimeUnit(ConfigManager.GeneralConfig.TimeUnit);
+            TimeFactor.UnitType = ConfigManager.GeneralConfig.TimeUnit;
 
             toolStripStatusLabelBalanceDollarValue.Text = "(" + ExchangeRateApi.ActiveDisplayCurrency + ")";
             toolStripStatusLabelBalanceText.Text = RatesAndStatsStates.Instance.LabelBalanceText;
@@ -296,16 +291,16 @@ namespace NiceHashMiner
 
                 var progress = new Progress<(string loadMessageText, int perc)>(p =>
                 {
-                    loadingControl.Progress = p.perc;
+                    loadingControl.Progress = (int) p.perc;
                     loadingControl.LoadMessageText = p.loadMessageText;
                 });
 
                 var progressDownload = new Progress<(string loadMessageText, int perc)>(p =>
                 {
-                    loadingControl.ProgressSecond = p.perc;
+                    loadingControl.ProgressSecond = (int) p.perc;
                     loadingControl.LoadMessageTextSecond = p.loadMessageText;
                 });
-                await ApplicationStateManager.InitializeManagersAndMiners(loadingControl, progress, progressDownload);
+                await ApplicationStateManager.InitializeManagersAndMiners(loadingControl);
             }
             devicesListViewEnableControl1.SetComputeDevices(AvailableDevices.Devices.ToList());
 
@@ -329,6 +324,10 @@ namespace NiceHashMiner
                     ApplicationStateManager.StopAllDevice();
                 }
             }
+#if SHOW_TDP_SETTINGS
+            var form_TDP = new Form_TDPSettings();
+            form_TDP.Show();
+#endif
         }
 
         private void UpdateGlobalRate(double totalRate)
@@ -339,7 +338,7 @@ namespace NiceHashMiner
             var displayTimeUnit = Tr(ConfigManager.GeneralConfig.TimeUnit.ToString());
 
             toolStripStatusLabelBTCDayText.Text = scaleBTC ? $"mBTC/{displayTimeUnit}" : $"BTC/{displayTimeUnit}";
-            toolStripStatusLabelGlobalRateValue.Text = totalDisplayRate.ToString(scaleBTC ? "F5" : "F6", CultureInfo.InvariantCulture);
+            toolStripStatusLabelGlobalRateValue.Text = totalDisplayRate.ToString(scaleBTC ? "F5" : "F8", CultureInfo.InvariantCulture);
 
             var timeFactorRate = ExchangeRateApi
                 .ConvertToActiveCurrency((totalRate * factorTimeUnit * ExchangeRateApi.GetUsdExchangeRate()));
@@ -389,17 +388,7 @@ namespace NiceHashMiner
 
         private void LinkLabelNewVersion_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            // check if the NHM was installed
-            var root = new DirectoryInfo(Paths.Root);
-            var isInstalled = false;
-            foreach (var file in root.GetFiles("*.exe"))
-            {
-                if (file.Name == "Uninstall NiceHashMiner.exe")
-                {
-                    isInstalled = true;
-                }
-            }
-            // end of installation checking
+            var isInstalled = UpdateHelpers.IsNHMInstalled();
             if (!isInstalled)
             {
                 ApplicationStateManager.VisitNewVersionUrl();
@@ -408,7 +397,7 @@ namespace NiceHashMiner
             using (var updaterForm = new Form_ChooseUpdate())
             {
                 SetChildFormCenter(updaterForm);
-                ApplicationStateManager.CurrentForm = ApplicationStateManager.CurrentFormState.Settings;
+                ApplicationStateManager.CurrentForm = ApplicationStateManager.CurrentFormState.Update;
                 updaterForm.ShowDialog();
                 ApplicationStateManager.CurrentForm = ApplicationStateManager.CurrentFormState.Main;
             }
@@ -652,9 +641,11 @@ namespace NiceHashMiner
 
         private void ButtonPlugins_Click(object sender, EventArgs e)
         {
-            if (_minerPluginsForm == null) _minerPluginsForm = new Form_MinerPlugins();
-            SetChildFormCenter(_minerPluginsForm);
-            _minerPluginsForm.ShowDialog();
+            using (var minerPluginsForm = new Form_MinerPlugins())
+            {
+                SetChildFormCenter(minerPluginsForm);
+                minerPluginsForm.ShowDialog();
+            }
         }
 
         private void NotifyIcon1_MouseClick(object sender, MouseEventArgs e)
@@ -698,7 +689,9 @@ namespace NiceHashMiner
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (ConfigManager.GeneralConfig.MinimizeToTray && !_exitCalled)
+            if (e.CloseReason == CloseReason.UserClosing && 
+                ConfigManager.GeneralConfig.MinimizeToTray && 
+                !_exitCalled)
             {
                 notifyIcon1.Visible = true;
                 Hide();

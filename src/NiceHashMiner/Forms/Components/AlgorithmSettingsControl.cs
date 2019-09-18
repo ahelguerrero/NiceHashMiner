@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Windows.Forms;
-using NiceHashMiner.Mining;
-using NiceHashMiner.Utils;
+using NHM.Common.Enums;
+using NHMCore;
+using NHMCore.Mining;
 
 namespace NiceHashMiner.Forms.Components
 {
@@ -65,6 +66,9 @@ namespace NiceHashMiner.Forms.Components
             return value <= 0 ? "" : value.ToString();
         }
 
+
+        public bool IsInBenchmark { get; set; } = false;
+
         public void SetCurrentlySelected(ListViewItem lvi, ComputeDevice computeDevice)
         {
             // should not happen ever
@@ -76,20 +80,21 @@ namespace NiceHashMiner.Forms.Components
                 _selected = true;
                 _currentlySelectedAlgorithm = algorithm;
                 _currentlySelectedLvi = lvi;
-                Enabled = lvi.Checked;
+                Enabled = lvi.Checked && !IsInBenchmark;
 
+                var selectedAlgoName = $"{algorithm.AlgorithmName} ({algorithm.MinerBaseTypeName})";
                 groupBoxSelectedAlgorithmSettings.Text = string.Format(
-                    Translations.Tr("Selected Algorithm: {0}"),
-                    $"{algorithm.AlgorithmName} ({algorithm.MinerBaseTypeName})");
+                    Translations.Tr("Selected Algorithm: {0}"), ""); // keep the translation
+                labelSelectedAlgorithm.Text = selectedAlgoName;
 
                 field_PowerUsage.EntryText = ParseDoubleDefault(algorithm.PowerUsage);
-                var unit = Helpers.GetUnitForAlgorithmType(algorithm.IDs[0]);
+                var unit = algorithm.IDs[0].GetUnitPerSecond();
                 fieldBoxBenchmarkSpeed.LabelText = Translations.Tr("Benchmark Speed") + $" ({unit}):";
                 fieldBoxBenchmarkSpeed.EntryText = ParseDoubleDefault(algorithm.BenchmarkSpeed);
                 richTextBoxExtraLaunchParameters.Text = ParseStringDefault(algorithm.ExtraLaunchParameters);
                 if (algorithm.IsDual) 
                 {
-                    var secondaryUnit = Helpers.GetUnitForAlgorithmType(algorithm.IDs[0]);
+                    var secondaryUnit = algorithm.IDs[1].GetUnitPerSecond();
                     secondaryFieldBoxBenchmarkSpeed.LabelText = Translations.Tr("Secondary Benchmark Speed") + $" ({secondaryUnit}):";
                     secondaryFieldBoxBenchmarkSpeed.EntryText = ParseDoubleDefault(algorithm.SecondaryBenchmarkSpeed);
                     secondaryFieldBoxBenchmarkSpeed.Enabled = true;
@@ -97,6 +102,7 @@ namespace NiceHashMiner.Forms.Components
                 else 
                 {
                     secondaryFieldBoxBenchmarkSpeed.LabelText = Translations.Tr("Secondary Benchmark Speed") + ":";
+                    secondaryFieldBoxBenchmarkSpeed.EntryText = "";
                     secondaryFieldBoxBenchmarkSpeed.Enabled = false;
                 }
                 
@@ -192,19 +198,5 @@ namespace NiceHashMiner.Forms.Components
         }
 
         #endregion
-
-        //private void buttonBenchmark_Click(object sender, EventArgs e) {
-        //    var device = new List<ComputeDevice>();
-        //    device.Add(_computeDevice);
-        //    var BenchmarkForm = new Form_Benchmark(
-        //                BenchmarkPerformanceType.Standard,
-        //                false, _currentlySelectedAlgorithm.NiceHashID);
-        //    BenchmarkForm.ShowDialog();
-        //    fieldBoxBenchmarkSpeed.EntryText = _currentlySelectedAlgorithm.BenchmarkSpeed.ToString();
-        //    // update lvi speed
-        //    if (_currentlySelectedLvi != null) {
-        //        _currentlySelectedLvi.SubItems[2].Text = Helpers.FormatSpeedOutput(_currentlySelectedAlgorithm.BenchmarkSpeed);
-        //    }
-        //}
     }
 }

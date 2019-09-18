@@ -3,12 +3,14 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using NHM.Common.Enums;
-using NiceHashMiner.Configs;
-using NiceHashMiner.Interfaces.DataVisualizer;
-using NiceHashMiner.Mining;
-using NiceHashMiner.Mining.Plugins;
-using NiceHashMiner.Utils;
-using static NiceHashMiner.Translations;
+using NHMCore;
+using NHMCore.Configs;
+using NHMCore.Interfaces.DataVisualizer;
+using NHMCore.Mining;
+using NHMCore.Mining.Plugins;
+using NHMCore.Utils;
+
+using static NHMCore.Translations;
 
 namespace NiceHashMiner.Forms
 {
@@ -28,7 +30,7 @@ namespace NiceHashMiner.Forms
             InitializeComponent();
             ApplicationStateManager.SubscribeStateDisplayer(this);
 
-            Icon = Properties.Resources.logo;
+            Icon = NHMCore.Properties.Resources.logo;
             this.TopMost = ConfigManager.GeneralConfig.GUIWindowsAlwaysOnTop;
 
             // backup settings
@@ -36,23 +38,6 @@ namespace NiceHashMiner.Forms
 
             // Initialize tabs
             InitializeGeneralTab();
-
-            // initialization calls 
-            InitializeDevicesTab();
-            // link algorithm list with algorithm settings control
-            algorithmSettingsControl1.Enabled = false;
-            algorithmsListView1.ComunicationInterface = algorithmSettingsControl1;
-            //algorithmsListView1.RemoveRatioRates();
-
-
-            // set first device selected {
-            if (AvailableDevices.Devices.Count > 0)
-            {
-                _selectedComputeDevice = AvailableDevices.Devices[0];
-                algorithmsListView1.SetAlgorithms(_selectedComputeDevice, _selectedComputeDevice.Enabled);
-                groupBoxAlgorithmSettings.Text = string.Format(Tr("Algorithm settings for {0} :"),
-                    _selectedComputeDevice.Name);
-            }
 
             checkBox_DebugConsole.DataBindings.Add("Checked", ConfigManager.GeneralConfig, nameof(ConfigManager.GeneralConfig.DebugConsole));
             checkBox_AutoStartMining.DataBindings.Add("Checked", ConfigManager.GeneralConfig, nameof(ConfigManager.GeneralConfig.AutoStartMining));
@@ -76,16 +61,7 @@ namespace NiceHashMiner.Forms
             textBox_MinProfit.DataBindings.Add("Enabled", MiningProfitSettings.Instance, nameof(MiningProfitSettings.IsMinimumProfitProfitEnabled), false, DataSourceUpdateMode.OnPropertyChanged);
 
             checkBox_DisableDeviceStatusMonitoring.DataBindings.Add("Checked", ConfigManager.GeneralConfig, nameof(ConfigManager.GeneralConfig.DisableDeviceStatusMonitoring));
-
-#if TESTNET || TESTNETDEV || PRODUCTION_NEW
             checkBox_DisableDevicePowerModeSettings.DataBindings.Add("Checked", ConfigManager.GeneralConfig, nameof(ConfigManager.GeneralConfig.DisableDevicePowerModeSettings));
-#else
-            checkBox_DisableDevicePowerModeSettings.Enabled = false;
-            checkBox_DisableDevicePowerModeSettings.Checked = true;
-            checkBox_DisableDevicePowerModeSettings.Visible = false;
-            pictureBox_DisableDevicePowerModeSettings.Visible = false;
-            groupBoxDeviceMonitoring.Height = (int)(groupBoxDeviceMonitoring.Height * 0.7);
-#endif
 
             // idle mining
             checkBox_IdleWhenNoInternetAccess.DataBindings.Add("Checked", ConfigManager.GeneralConfig, nameof(ConfigManager.GeneralConfig.IdleWhenNoInternetAccess));
@@ -237,8 +213,6 @@ namespace NiceHashMiner.Forms
 
             SetToolTip(Tr("When checked, {0} will mine regardless of profit.", NHMProductInfo.Name),
                             checkBox_MineRegardlessOfProfit, pictureBox_MineRegardlessOfProfit);
-
-            algorithmSettingsControl1.InitLocale(toolTip1);
         }
 
         private void SetToolTip(string text, params Control[] controls)
@@ -323,14 +297,6 @@ namespace NiceHashMiner.Forms
                 textBox_ElectricityCost.Text = ConfigManager.GeneralConfig.KwhPrice.ToString("0.0000");
             }
 
-            // set custom control referances
-            {
-                // here we want all devices
-                devicesListViewEnableControl1.SetComputeDevices(AvailableDevices.Devices.ToList());
-                devicesListViewEnableControl1.SetAlgorithmsListView(algorithmsListView1);
-                devicesListViewEnableControl1.SaveToGeneralConfig = true;
-            }
-
             // Add language selections list
             {
                 var langs = GetAvailableLanguagesNames();
@@ -371,21 +337,6 @@ namespace NiceHashMiner.Forms
         }
 
 #endregion //Tab General
-
-#region Tab Devices
-
-        private void InitializeDevicesTab()
-        {
-            InitializeDevicesCallbacks();
-        }
-
-        private void InitializeDevicesCallbacks()
-        {
-            devicesListViewEnableControl1.SetDeviceSelectionChangedCallback(DevicesListView1_ItemSelectionChanged);
-            minDeviceProfitField.Leave += MinDeviceProfitFieldLeft;
-        }
-
-        #endregion //Tab Devices
 
         #endregion // Initializations
 
@@ -440,36 +391,6 @@ namespace NiceHashMiner.Forms
 
 #endregion //Tab General
 
-
-#region Tab Device
-
-        private void DevicesListView1_ItemSelectionChanged(object sender, ListViewItemSelectionChangedEventArgs e)
-        {
-            algorithmSettingsControl1.Deselect();
-            // show algorithms
-            _selectedComputeDevice =
-                AvailableDevices.GetCurrentlySelectedComputeDevice(e.ItemIndex, ShowUniqueDeviceList);
-            algorithmsListView1.SetAlgorithms(_selectedComputeDevice, _selectedComputeDevice.Enabled);
-            groupBoxAlgorithmSettings.Text = string.Format(Tr("Algorithm settings for {0} :"),
-                _selectedComputeDevice.Name);
-            minDeviceProfitField.Enabled = true;
-            minDeviceProfitField.EntryText = _selectedComputeDevice.MinimumProfit.ToString("F2").Replace(',', '.');
-        }
-
-        private void MinDeviceProfitFieldLeft(object sender, EventArgs e)
-        {
-            if (_selectedComputeDevice != null && 
-                double.TryParse(minDeviceProfitField.EntryText, out var min))
-            {
-                if (min < 0) min = 0;
-
-                _selectedComputeDevice.MinimumProfit = min;
-            }
-        }
-
-#endregion //Tab Device
-
-
         private void ToolTip1_Popup(object sender, PopupEventArgs e)
         {
             toolTip1.ToolTipTitle = Tr("Explanation");
@@ -486,7 +407,7 @@ namespace NiceHashMiner.Forms
             if (result == DialogResult.Yes)
             {
                 SetDefaults = true;
-                SetLanguage("en");
+                Translations.SelectedLanguage = "en";
                 ConfigManager.GeneralConfig.SetDefaults();
                 InitializeGeneralTabFieldValuesReferences();
                 InitializeGeneralTabTranslations();
@@ -520,15 +441,6 @@ namespace NiceHashMiner.Forms
 
 #endregion Form Callbacks
 
-        private void TabControlGeneral_Selected(object sender, TabControlEventArgs e)
-        {
-            // set first device selected {
-            if (AvailableDevices.Devices.Count > 0)
-            {
-                algorithmSettingsControl1.Deselect();
-            }
-        }
-
         private void CheckBox_Use3rdPartyMiners_CheckedChanged(object sender, EventArgs e)
         {
             if (!_isInitFinished) return;
@@ -548,6 +460,7 @@ namespace NiceHashMiner.Forms
             // update logic
             var is3rdPartyEnabled = ConfigManager.GeneralConfig.Use3rdPartyMiners == Use3rdPartyMiners.YES;
             checkBox_RunEthlargement.Enabled = Helpers.IsElevated && is3rdPartyEnabled;
+            // TODO_NiceHashMiner GUI coupling logic. Fix inside NHMCore
             EthlargementIntegratedPlugin.Instance.ServiceEnabled = ConfigManager.GeneralConfig.UseEthlargement && Helpers.IsElevated && is3rdPartyEnabled;
             // re-init update plugins
             MinerPluginsManager.InitIntegratedPlugins();
