@@ -1,7 +1,6 @@
 ﻿using MinerPlugin;
 using MinerPluginToolkitV1;
 using MinerPluginToolkitV1.Configs;
-using MinerPluginToolkitV1.Interfaces;
 using NHM.Common.Algorithm;
 using NHM.Common.Device;
 using NHM.Common.Enums;
@@ -11,7 +10,7 @@ using System.Linq;
 
 namespace SgminerAvemore
 {
-    public abstract class SgminerAvemorePlugin : PluginBase
+    public class SgminerAvemorePlugin : PluginBase
     {
         public SgminerAvemorePlugin()
         {
@@ -21,19 +20,26 @@ namespace SgminerAvemore
             // https://github.com/brian112358/avermore-miner/releases current v1.4.1
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
+                BinVersion = "v1.4.1",
+                ExePath = new List<string> { "avermore-windows", "sgminer.exe" }, 
                 Urls = new List<string>
                 {
                     "https://github.com/brian112358/avermore-miner/releases/download/v1.4.1/avermore-v1.4.1-windows.zip", // original
                 }
             };
+            PluginMetaInfo = new PluginMetaInfo
+            {
+                PluginDescription = "This is a multi-threaded multi-pool GPU miner.",
+                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+            };
         }
 
-        //public override string PluginUUID => "MISSING";
+        public override string PluginUUID => "bc95fd70-e361-11e9-a914-497feefbdfc8";
 
-        public override Version Version => new Version(2, 0);
+        public override Version Version => new Version(3, 1);
         public override string Name => "SGminerAvemore";
 
-        public override string Author => "stanko@nicehash.com";
+        public override string Author => "info@nicehash.com";
 
         public override Dictionary<BaseDevice, IReadOnlyList<Algorithm>> GetSupportedAlgorithms(IEnumerable<BaseDevice> devices)
         {
@@ -44,17 +50,19 @@ namespace SgminerAvemore
 
             foreach (var gpu in amdGpus)
             {
-                var algorithms = new List<Algorithm> {
-                    new Algorithm(PluginUUID, AlgorithmType.X16R)
-                    {
-                        ExtraLaunchParameters = "-X 256"
-                    },
-                };
-                var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
-                if (filteredAlgorithms.Count > 0) supported.Add(gpu, filteredAlgorithms);
+                var algorithms = GetSupportedAlgorithms(gpu);
+                if (algorithms.Count > 0) supported.Add(gpu, algorithms);
             }
 
             return supported;
+        }
+
+        private List<Algorithm> GetSupportedAlgorithms(AMDDevice gpu)
+        {
+            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsAMD(PluginUUID);
+            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
+            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
+            return filteredAlgorithms;
         }
 
         protected override MinerBase CreateMinerBase()
@@ -75,9 +83,7 @@ namespace SgminerAvemore
 
         public override IEnumerable<string> CheckBinaryPackageMissingFiles()
         {
-            var miner = CreateMiner() as IBinAndCwdPathsGettter;
-            if (miner == null) return Enumerable.Empty<string>();
-            var pluginRootBinsPath = miner.GetBinAndCwdPaths().Item2;
+            var pluginRootBinsPath = GetBinAndCwdPaths().Item2;
             return BinaryPackageMissingFilesCheckerHelpers.ReturnMissingFiles(pluginRootBinsPath, new List<string> { "libcurl.dll", "libeay32.dll", "libidn-11.dll", "librtmp.dll",
                 "libssh2.dll", "pdcurses.dll", "pthreadGC2.dll", "ssleay32.dll", "zlib1.dll", "sgminer.exe"
             });

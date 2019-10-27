@@ -1,17 +1,15 @@
 ﻿using MinerPlugin;
 using MinerPluginToolkitV1;
+using MinerPluginToolkitV1.Configs;
+using Newtonsoft.Json;
+using NHM.Common;
 using NHM.Common.Enums;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using static NHM.Common.StratumServiceHelpers;
-using System.Net.Http;
-using Newtonsoft.Json;
-using System.Linq;
-using System.IO;
-using NHM.Common;
-using System.Collections.Generic;
-using MinerPluginToolkitV1.Configs;
 
 namespace BMiner
 {
@@ -21,31 +19,18 @@ namespace BMiner
         private int _apiPort;
         private readonly HttpClient _http = new HttpClient();
 
-        public BMiner(string uuid) : base(uuid)
-        { }
-
-        protected virtual string AlgorithmName(AlgorithmType algorithmType)
+        public BMiner(string uuid, Func<AlgorithmType, string> algorithmName, Func<AlgorithmType, double> devFee) : base(uuid)
         {
-            switch (algorithmType)
-            {
-                case AlgorithmType.DaggerHashimoto: return "ethstratum";
-                case AlgorithmType.ZHash: return "zhash";
-                case AlgorithmType.Beam: return "beam";
-                case AlgorithmType.GrinCuckaroo29: return "cuckaroo29";
-                case AlgorithmType.GrinCuckatoo31: return "cuckatoo31";
-                case AlgorithmType.GrinCuckarood29: return "cuckaroo29d";
-                default: return "";
-            }
+            _algorithmName = algorithmName;
+            _devFee = devFee;
         }
 
-        private double DevFee
-        {
-            get
-            {
-                if (AlgorithmType.DaggerHashimoto == _algorithmType) return 0.65;
-                return 2.0;
-            }
-        }
+        readonly Func<AlgorithmType, string> _algorithmName;
+        readonly Func<AlgorithmType, double> _devFee;
+
+        protected virtual string AlgorithmName(AlgorithmType algorithmType) => _algorithmName(algorithmType);
+
+        private double DevFee => _devFee(_algorithmType);
 
         public async override Task<ApiData> GetMinerStatsDataAsync()
         {
@@ -93,7 +78,7 @@ namespace BMiner
             // settup times
             var benchmarkTime = MinerBenchmarkTimeSettings.ParseBenchmarkTime(new List<int> { 30, 60, 120 }, MinerBenchmarkTimeSettings, _miningPairs, benchmarkType); // in seconds
 
-            var urlWithPort = GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
+            var urlWithPort = StratumServiceHelpers.GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
             var split = urlWithPort.Split(':');
             var url = split[1].Substring(2, split[1].Length - 2);
             var port = split[2];
@@ -138,13 +123,6 @@ namespace BMiner
             return await t;
         }
 
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            var pluginRootBins = Paths.MinerPluginsPath(_uuid, "bins", "bminer-lite-v15.7.6-f585663");
-            var binPath = Path.Combine(pluginRootBins, "bminer.exe");
-            return Tuple.Create(binPath, pluginRootBins);
-        }
-
         protected override void Init()
         {
             var deviceIDs = _miningPairs.Select(p =>
@@ -161,7 +139,7 @@ namespace BMiner
             // API port function might be blocking
             _apiPort = GetAvaliablePort();
             // instant non blocking
-            var urlWithPort = GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
+            var urlWithPort = StratumServiceHelpers.GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
             var split = urlWithPort.Split(':');
             var url = split[1].Substring(2, split[1].Length - 2);
             var port = split[2];

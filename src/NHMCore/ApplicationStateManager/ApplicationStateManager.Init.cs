@@ -1,18 +1,17 @@
-// SHARED
+using NHM.Common;
+using NHM.Common.Enums;
+using NHM.DeviceDetection;
+using NHM.DeviceMonitoring;
 using NHMCore.Configs;
 using NHMCore.Mining;
 using NHMCore.Mining.Plugins;
 using NHMCore.Stats;
 using NHMCore.Utils;
-using NHM.Common;
-using NHM.Common.Enums;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using NHM.DeviceDetection;
-using NHM.DeviceMonitoring;
 using static NHMCore.Translations;
 
 namespace NHMCore
@@ -134,11 +133,14 @@ namespace NHMCore
                 ConfigManager.InitDeviceSettings();
                 #endregion Device Detection
 
+                // TODO ADD STEP AND MESSAGE
+                await MinerPluginsManager.CheckAndSwapInstalledExternalPlugins();
+
                 // STEP
                 // load plugins
                 loader.PrimaryProgress?.Report((Tr("Loading miner plugins..."), nextProgPerc()));
                 // Plugin Loading
-                MinerPluginsManager.LoadMinerPlugins();
+                MinerPluginsManager.LoadAndInitMinerPlugins();
                 // commit again benchmarks after loading plugins
                 ConfigManager.CommitBenchmarks();
                 /////////////////////////////////////////////
@@ -211,7 +213,7 @@ namespace NHMCore
                 // STEP
                 // VC_REDIST check
                 loader.PrimaryProgress?.Report((Tr("Checking VC_REDIST..."), nextProgPerc()));
-                VC_REDIST_x64_2015_DEPENDENCY_PLUGIN.Instance.InstallVcRedist();
+                VC_REDIST_x64_2015_2019_DEPENDENCY_PLUGIN.Instance.InstallVcRedist();
 
                 // STEP
                 if (FirewallRules.RunFirewallRulesOnStartup)

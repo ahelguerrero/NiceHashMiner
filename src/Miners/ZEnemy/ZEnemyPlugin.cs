@@ -1,6 +1,5 @@
 ﻿using MinerPluginToolkitV1;
 using MinerPluginToolkitV1.Configs;
-using MinerPluginToolkitV1.Interfaces;
 using NHM.Common;
 using NHM.Common.Algorithm;
 using NHM.Common.Device;
@@ -19,22 +18,29 @@ namespace ZEnemy
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
             DefaultTimeout = PluginInternalSettings.DefaultTimeout;
             GetApiMaxTimeoutConfig = PluginInternalSettings.GetApiMaxTimeoutConfig;
-            // https://bitcointalk.org/index.php?topic=3378390.0 current 2-1-cuda10.1 // TODO update
+            // https://bitcointalk.org/index.php?topic=3378390.0
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
+                // github tag ver-2.3
+                BinVersion = "2.3-win-cuda10.1", // fix version if wrong
+                ExePath = new List<string> { "z-enemy.exe" },
                 Urls = new List<string>
                 {
-                    "https://github.com/nicehash/MinerDownloads/releases/download/1.9.1.12b/z-enemy.zip",
-                    "https://mega.nz/#!dCxxWYDB!p_hB7TWebB1ysOMkf5mv0OU1Awb9iEJ7vjPk6Niu-aY" // original source
+                    "https://github.com/z-enemy/z-enemy/releases/download/ver-2.3/z-enemy-2.3-win-cuda10.1.zip" // original source
                 }
+            };
+            PluginMetaInfo = new PluginMetaInfo
+            {
+                PluginDescription = "Zealot/Enemy (z-enemy) NVIDIA GPU miner.",
+                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
             };
         }
 
-        public override Version Version => new Version(2, 2);
+        public override Version Version => new Version(3, 2);
 
         public override string Name => "ZEnemy";
 
-        public override string Author => "domen.kirnkrefl@nicehash.com";
+        public override string Author => "info@nicehash.com";
 
         public override string PluginUUID => "5532d300-7238-11e9-b20c-f9f12eb6d835";
 
@@ -56,10 +62,8 @@ namespace ZEnemy
 
         IReadOnlyList<Algorithm> GetSupportedAlgorithms(CUDADevice gpu)
         {
-            var algorithms = new List<Algorithm>
-            {
-                new Algorithm(PluginUUID, AlgorithmType.X16R)
-            };
+            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsNVIDIA(PluginUUID);
+            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
             var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
             return filteredAlgorithms;
         }
@@ -71,9 +75,7 @@ namespace ZEnemy
 
         public override IEnumerable<string> CheckBinaryPackageMissingFiles()
         {
-            var miner = CreateMiner() as IBinAndCwdPathsGettter;
-            if (miner == null) return Enumerable.Empty<string>();
-            var pluginRootBinsPath = miner.GetBinAndCwdPaths().Item2;
+            var pluginRootBinsPath = GetBinAndCwdPaths().Item2;
             return BinaryPackageMissingFilesCheckerHelpers.ReturnMissingFiles(pluginRootBinsPath, new List<string> { "vcruntime140.dll", "z-enemy.exe" });
         }
 
@@ -82,10 +84,10 @@ namespace ZEnemy
             try
             {
                 if (ids.Count() == 0) return false;
-                if (benchmarkedPluginVersion.Major == 2 && benchmarkedPluginVersion.Minor < 2)
+                if (benchmarkedPluginVersion.Major == 3 && benchmarkedPluginVersion.Minor < 1)
                 {
-                    // v2.1 https://bitcointalk.org/index.php?topic=3378390.0
-                    if (ids.FirstOrDefault() == AlgorithmType.X16R) return true;
+                    // v2.3 Performance improvement: +2-3% x16rv2 algo https://github.com/z-enemy/z-enemy/releases/tag/ver-2.3
+                    if (ids.FirstOrDefault() == AlgorithmType.X16Rv2) return true;
                 }
             }
             catch (Exception e)

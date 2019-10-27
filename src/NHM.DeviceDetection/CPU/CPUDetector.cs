@@ -1,12 +1,11 @@
-﻿using NHM.Common.Device;
+﻿using NHM.Common;
+using NHM.Common.Device;
+using NHM.Common.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Management;
-using NHM.Common;
-using NHM.Common.Enums;
+using System.Threading.Tasks;
 
 namespace NHM.DeviceDetection.CPU
 {
@@ -57,7 +56,7 @@ namespace NHM.DeviceDetection.CPU
 
                 // plugin device
                 var bd = new BaseDevice(DeviceType.CPU, uuid, name, 0);
-                var cpu = new CPUDevice(bd, cpuCount, threadsPerCpu, cpuDetectResult.IsHyperThreadingEnabled, affinityMasks);
+                var cpu = new CPUDevice(bd, cpuCount, threadsPerCpu, cpuDetectResult.IsHyperThreadingEnabled, affinityMasks, CpuUtils.SupportedExtensions());
                 return cpu;
             });
         }

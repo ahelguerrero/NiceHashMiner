@@ -1,13 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using MinerPluginToolkitV1;
+﻿using MinerPluginToolkitV1;
 using MinerPluginToolkitV1.Configs;
 using MinerPluginToolkitV1.Interfaces;
 using NHM.Common.Algorithm;
 using NHM.Common.Device;
 using NHM.Common.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace LolMinerBeam
 {
@@ -18,21 +18,28 @@ namespace LolMinerBeam
             // set default internal settings
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
             MinerSystemEnvironmentVariables = PluginInternalSettings.MinerSystemEnvironmentVariables;
-            // https://github.com/Lolliedieb/lolMiner-releases/releases | https://bitcointalk.org/index.php?topic=4724735.0 current 0.8.8
+            // https://github.com/Lolliedieb/lolMiner-releases/releases | https://bitcointalk.org/index.php?topic=4724735.0 
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
+                BinVersion = "0.8.8",
+                ExePath = new List<string> { "0.8.8", "lolMiner.exe" },
                 Urls = new List<string>
                 {
                     "https://github.com/Lolliedieb/lolMiner-releases/releases/download/0.8.8/lolMiner_v088_Win64.zip", // original source
                 }
             };
+            PluginMetaInfo = new PluginMetaInfo
+            {
+                PluginDescription = "Miner for AMD and NVIDIA gpus.",
+                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+            };
         }
 
-        public override Version Version => new Version(2, 4);
+        public override Version Version => new Version(3, 1);
 
         public override string Name => "LolMinerBeam";
 
-        public override string Author => "domen.kirnkrefl@nicehash.com";
+        public override string Author => "info@nicehash.com";
 
         public override string PluginUUID => "435f0820-7237-11e9-b20c-f9f12eb6d835";
 
@@ -83,23 +90,14 @@ namespace LolMinerBeam
             List<Algorithm> algorithms;
             if (isAMD)
             {
-                algorithms = new List<Algorithm>
-                {
-                    new Algorithm(PluginUUID, AlgorithmType.GrinCuckatoo31),
-                    new Algorithm(PluginUUID, AlgorithmType.GrinCuckarood29),
-                    new Algorithm(PluginUUID, AlgorithmType.BeamV2),
-                };
+                algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsAMD(PluginUUID);
             }
             else
             {
                 // NVIDIA OpenCL backend stability is questionable
-                algorithms = new List<Algorithm>
-                {
-                    new Algorithm(PluginUUID, AlgorithmType.GrinCuckatoo31) { Enabled = false },
-                    new Algorithm(PluginUUID, AlgorithmType.GrinCuckarood29) { Enabled = false },
-                    new Algorithm(PluginUUID, AlgorithmType.BeamV2) { Enabled = false },
-                };
+                algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsNVIDIA(PluginUUID);
             }
+            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
             var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
             return filteredAlgorithms;
         }
@@ -113,9 +111,7 @@ namespace LolMinerBeam
         {
             if (_mappedDeviceIds.Count == 0) return;
             // TODO will block
-            var miner = CreateMiner() as IBinAndCwdPathsGettter;
-            if (miner == null) return;
-            var minerBinPath = miner.GetBinAndCwdPaths().Item1;
+            var minerBinPath = GetBinAndCwdPaths().Item1;
             var output = await DevicesCrossReferenceHelpers.MinerOutput(minerBinPath, "--benchmark BEAM --longstats 60 --devices -1", new List<string> { "Start Benchmark..." });
             var mappedDevs = DevicesListParser.ParseLolMinerOutput(output, devices.ToList());
 
@@ -129,9 +125,7 @@ namespace LolMinerBeam
 
         public override IEnumerable<string> CheckBinaryPackageMissingFiles()
         {
-            var miner = CreateMiner() as IBinAndCwdPathsGettter;
-            if (miner == null) return Enumerable.Empty<string>();
-            var pluginRootBinsPath = miner.GetBinAndCwdPaths().Item2;
+            var pluginRootBinsPath = GetBinAndCwdPaths().Item2;
             return BinaryPackageMissingFilesCheckerHelpers.ReturnMissingFiles(pluginRootBinsPath, new List<string> { "lolMiner.exe" });
         }
 

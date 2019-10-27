@@ -1,17 +1,15 @@
-﻿using System;
+﻿using MinerPlugin;
+using MinerPluginToolkitV1;
+using MinerPluginToolkitV1.Configs;
+using Newtonsoft.Json;
+using NHM.Common;
+using NHM.Common.Enums;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using MinerPlugin;
-using MinerPluginToolkitV1;
-using Newtonsoft.Json;
-using NHM.Common;
-using NHM.Common.Enums;
-using static NHM.Common.StratumServiceHelpers;
-using MinerPluginToolkitV1.Configs;
 
 namespace LolMinerBeam
 {
@@ -32,16 +30,7 @@ namespace LolMinerBeam
             _mappedIDs = mappedIDs;
         }
 
-        protected virtual string AlgorithmName(AlgorithmType algorithmType)
-        {
-            switch (algorithmType)
-            {
-                case AlgorithmType.GrinCuckarood29: return "GRIN-AD29";
-                case AlgorithmType.GrinCuckatoo31: return "GRIN-AT31";
-                case AlgorithmType.BeamV2: return "BEAM-II";
-                default: return "";
-            }
-        }
+        protected virtual string AlgorithmName(AlgorithmType algorithmType) => PluginSupportedAlgorithms.AlgorithmName(algorithmType);
 
         public async override Task<ApiData> GetMinerStatsDataAsync()
         {
@@ -123,15 +112,6 @@ namespace LolMinerBeam
             return await t;
         }
 
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), _uuid);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins", "0.8.8");
-            var binPath = Path.Combine(pluginRootBins, "lolMiner.exe");
-            var binCwd = pluginRootBins;
-            return Tuple.Create(binPath, binCwd);
-        }
-
         protected override IEnumerable<MiningPair> GetSortedMiningPairs(IEnumerable<MiningPair> miningPairs)
         {
             var pairsList = miningPairs.ToList();
@@ -157,7 +137,7 @@ namespace LolMinerBeam
             // API port function might be blocking
             _apiPort = GetAvaliablePort();
             // instant non blocking
-            var urlWithPort = GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
+            var urlWithPort = StratumServiceHelpers.GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
             var split = urlWithPort.Split(':');
             var url = split[1].Substring(2, split[1].Length - 2);
             var port = split[2];

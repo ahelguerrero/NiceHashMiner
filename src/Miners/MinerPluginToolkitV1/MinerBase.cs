@@ -1,15 +1,15 @@
 ﻿using MinerPlugin;
-using NHM.Common.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using MinerPluginToolkitV1.Configs;
 using MinerPluginToolkitV1.ExtraLaunchParameters;
 using MinerPluginToolkitV1.Interfaces;
 using NHM.Common;
+using NHM.Common.Enums;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MinerPluginToolkitV1
 {
@@ -143,9 +143,15 @@ namespace MinerPluginToolkitV1
             _password = password;
         }
 
+        // Parent plugin has this info
+        public IBinAndCwdPathsGettter BinAndCwdPathsGettter { get; set; } = null;
+        public Tuple<string, string> GetBinAndCwdPaths()
+        {
+            return BinAndCwdPathsGettter.GetBinAndCwdPaths();
+        }
+
         abstract public Task<BenchmarkResult> StartBenchmark(CancellationToken stop, BenchmarkPerformanceType benchmarkType = BenchmarkPerformanceType.Standard);
 
-        abstract public Tuple<string, string> GetBinAndCwdPaths();
         abstract protected string MiningCreateCommandLine();
 
         protected virtual Dictionary<string, string> GetEnvironmentVariables()

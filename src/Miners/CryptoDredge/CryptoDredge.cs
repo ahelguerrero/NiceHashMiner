@@ -1,20 +1,14 @@
 ﻿using MinerPlugin;
 using MinerPluginToolkitV1;
+using MinerPluginToolkitV1.Configs;
+using NHM.Common;
 using NHM.Common.Enums;
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using static NHM.Common.StratumServiceHelpers;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.IO;
-using NHM.Common;
-using System.Collections.Generic;
-using MinerPluginToolkitV1.Configs;
-using MinerPluginToolkitV1.CCMinerCommon;
-using System.Net.Sockets;
-using System.Text;
-using NHM.Common.Device;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace CryptoDredge
 {
@@ -23,31 +17,16 @@ namespace CryptoDredge
         private string _devices;
         private int _apiPort;
 
-        public CryptoDredge(string uuid) : base(uuid)
-        {}
-
-        protected virtual string AlgorithmName(AlgorithmType algorithmType)
+        public CryptoDredge(string uuid, Func<AlgorithmType, string> algorithmName, Func<AlgorithmType, double> devFee) : base(uuid)
         {
-            switch (algorithmType)
-            {
-                case AlgorithmType.Lyra2REv3: return "lyra2v3";
-                case AlgorithmType.X16R: return "x16r";
-                case AlgorithmType.MTP: return "mtp";
-                default: return "";
-            }
+            _algorithmName = algorithmName;
+            _devFee = devFee;
         }
 
-        private double DevFee
-        {
-            get
-            {
-                switch (_algorithmType)
-                {
-                    case AlgorithmType.MTP: return 2.0;
-                    default: return 1.0;
-                }
-            }
-        }
+        readonly Func<AlgorithmType, string> _algorithmName;
+        readonly Func<AlgorithmType, double> _devFee;
+
+        private double DevFee => _devFee(_algorithmType);
 
         private struct IdPowerHash
         {
@@ -199,15 +178,6 @@ namespace CryptoDredge
             return await t;
         }
 
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), _uuid);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins", "CryptoDredge_0.21.0");
-            var binPath = Path.Combine(pluginRootBins, "CryptoDredge.exe");
-            var binCwd = pluginRootBins;
-            return Tuple.Create(binPath, binCwd);
-        }
-
         protected override void Init()
         {
             _devices = string.Join(",", _miningPairs.Select(p => p.Device.ID));
@@ -218,8 +188,8 @@ namespace CryptoDredge
             // API port function might be blocking
             _apiPort = GetAvaliablePort();
             // instant non blocking
-            var url = GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
-            var algo = AlgorithmName(_algorithmType);
+            var url = StratumServiceHelpers.GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
+            var algo = _algorithmName(_algorithmType);
 
             var commandLine = $"--algo {algo} --url {url} --user {_username} -b 127.0.0.1:{_apiPort} --device {_devices} --no-watchdog {_extraLaunchParameters}";
             return commandLine;

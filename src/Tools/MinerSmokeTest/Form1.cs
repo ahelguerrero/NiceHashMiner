@@ -45,12 +45,11 @@ namespace MinerSmokeTest
         private static void InitNhmlDevsPlugins()
         {
             //await ComputeDeviceManager.QueryDevicesAsync(null, false);
-            MinerPluginsManager.LoadMinerPlugins();
+            MinerPluginsManager.LoadAndInitMinerPlugins();
         }
 
         private async void FormShown(object sender, EventArgs e)
         {
-            ConfigManager.GeneralConfig.Use3rdPartyMiners = Use3rdPartyMiners.YES;
             try
             {
                 InitNhmlDevsPlugins();

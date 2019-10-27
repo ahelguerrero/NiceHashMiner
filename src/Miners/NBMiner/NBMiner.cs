@@ -1,16 +1,15 @@
-﻿using System;
+﻿using MinerPlugin;
+using MinerPluginToolkitV1;
+using MinerPluginToolkitV1.Configs;
+using Newtonsoft.Json;
+using NHM.Common;
+using NHM.Common.Enums;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using MinerPlugin;
-using MinerPluginToolkitV1;
-using Newtonsoft.Json;
-using NHM.Common;
-using NHM.Common.Enums;
-using MinerPluginToolkitV1.Configs;
 
 namespace NBMiner
 {
@@ -21,38 +20,9 @@ namespace NBMiner
         private readonly HttpClient _http = new HttpClient();
         protected readonly Dictionary<string, int> _mappedIDs = new Dictionary<string, int>();
 
-        private string AlgoName
-        {
-            get
-            {
-                switch (_algorithmType)
-                {
-                    case AlgorithmType.GrinCuckatoo31:
-                        return "cuckatoo";
-                    case AlgorithmType.CuckooCycle:
-                        return "cuckoo_ae";
-                    case AlgorithmType.GrinCuckarood29:
-                        return "cuckarood";
-                    default:
-                        return "";
-                }
-            }
-        }
-        private double DevFee
-        {
-            get
-            {
-                switch (_algorithmType)
-                {
-                    case AlgorithmType.GrinCuckatoo31:
-                    case AlgorithmType.CuckooCycle:
-                    case AlgorithmType.GrinCuckarood29:
-                        return 2.0;
-                    default:
-                        return 0;
-                }
-            }
-        }
+        private string AlgoName => PluginSupportedAlgorithms.AlgorithmName(_algorithmType);
+
+        private double DevFee => PluginSupportedAlgorithms.DevFee(_algorithmType);
 
         public NBMiner(string uuid, Dictionary<string, int> mappedIDs) : base(uuid)
         {
@@ -102,15 +72,6 @@ namespace NBMiner
             return await t;
         }
 
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), _uuid);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins", "NBMiner_Win");
-            var binPath = Path.Combine(pluginRootBins, "nbminer.exe");
-            var binCwd = pluginRootBins;
-            return Tuple.Create(binPath, binCwd);
-        }
-
         protected override string MiningCreateCommandLine()
         {
             return CreateCommandLine(_username);
@@ -120,7 +81,8 @@ namespace NBMiner
         {
             _apiPort = GetAvaliablePort();
             var url = StratumServiceHelpers.GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
-            return $"-a {AlgoName} -o {url} -u {username} --api 127.0.0.1:{_apiPort} {_devices} -RUN {_extraLaunchParameters}";
+            // NVIDIA only platform
+            return $"-a {AlgoName} -o {url} -u {username} --api 127.0.0.1:{_apiPort} {_devices} --no-watchdog --platform 1 {_extraLaunchParameters}";
         }
         
         public override async Task<ApiData> GetMinerStatsDataAsync()

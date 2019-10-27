@@ -1,6 +1,4 @@
-﻿using MinerPluginToolkitV1.Configs;
-using MinerPluginToolkitV1.ExtraLaunchParameters;
-using System;
+﻿using MinerPluginToolkitV1.ExtraLaunchParameters;
 using System.Collections.Generic;
 
 namespace XMRig
@@ -92,6 +90,7 @@ namespace XMRig
                 {
                     Type = MinerOptionType.OptionWithSingleParameter,
                     ID = "xmrig_config",
+                    ShortName = "-c",
                     LongName = "--config="
                 },
                 /// <summary>

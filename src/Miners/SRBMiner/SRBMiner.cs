@@ -6,7 +6,6 @@ using NHM.Common.Device;
 using NHM.Common.Enums;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -27,28 +26,7 @@ namespace SRBMiner
             _mappedDeviceIds = mappedDeviceIds;
         }
 
-        private string AlgoName
-        {
-            get
-            {
-                switch (_algorithmType)
-                {
-                    case AlgorithmType.CryptoNightR:
-                        return "cryptonight_r";
-                    default:
-                        return "";
-                }
-            }
-        }
-
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), _uuid);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins", "SRBMiner-CN-V1-9-3");
-            var binPath = Path.Combine(pluginRootBins, "SRBMiner-CN.exe");
-            var binCwd = pluginRootBins;
-            return Tuple.Create(binPath, binCwd);
-        }
+        private string AlgoName => PluginSupportedAlgorithms.AlgorithmName(_algorithmType);
 
         public async override Task<ApiData> GetMinerStatsDataAsync()
         {

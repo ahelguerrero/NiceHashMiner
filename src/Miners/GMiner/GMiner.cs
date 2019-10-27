@@ -5,13 +5,11 @@ using Newtonsoft.Json;
 using NHM.Common;
 using NHM.Common.Enums;
 using System;
-using System.IO;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using static NHM.Common.StratumServiceHelpers;
 
 namespace GMinerPlugin
 {
@@ -35,26 +33,7 @@ namespace GMinerPlugin
             _mappedDeviceIds = mappedDeviceIds;
         }
 
-        protected virtual string AlgorithmName(AlgorithmType algorithmType)
-        {
-            switch (algorithmType)
-            {
-                case AlgorithmType.ZHash:
-                    return "144_5";
-                case AlgorithmType.Beam:
-                    return "beamhashI";
-                case AlgorithmType.GrinCuckatoo31:
-                    return "grin31";
-                case AlgorithmType.CuckooCycle:
-                    return "cuckoo29";
-                case AlgorithmType.GrinCuckarood29:
-                    return "cuckarood29";
-                case AlgorithmType.BeamV2:
-                    return "beamhashII";
-                default:
-                    return "";
-            }
-        }
+        protected virtual string AlgorithmName(AlgorithmType algorithmType) => PluginSupportedAlgorithms.AlgorithmName(algorithmType);
 
         private string CreateCommandLine(string username)
         {
@@ -63,7 +42,7 @@ namespace GMinerPlugin
 
             var algo = AlgorithmName(_algorithmType);
 
-            var urlWithPort = GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.NONE);
+            var urlWithPort = StratumServiceHelpers.GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.NONE);
             var split = urlWithPort.Split(':');
             var url = split[0];
             var port = split[1];
@@ -159,15 +138,6 @@ namespace GMinerPlugin
             var benchmarkWait = TimeSpan.FromMilliseconds(500);
             var t = MinerToolkit.WaitBenchmarkResult(bp, benchmarkTimeout, benchmarkWait, stop);
             return await t;
-        }
-
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), _uuid);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins");
-            var binPath = Path.Combine(pluginRootBins, "miner.exe");
-            var binCwd = pluginRootBins;
-            return Tuple.Create(binPath, binCwd);
         }
 
         protected override IEnumerable<MiningPair> GetSortedMiningPairs(IEnumerable<MiningPair> miningPairs)

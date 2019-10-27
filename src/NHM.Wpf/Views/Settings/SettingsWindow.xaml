@@ -9,7 +9,8 @@
         Title="{Binding Title}" 
         Icon="../../Resources/logo.ico" 
         Height="450" Width="800"
-        Closing="SettingsWindow_OnClosing">
+        Closing="SettingsWindow_OnClosing"
+        Loaded="Window_Loaded">
     <Window.DataContext>
         <vm:SettingsVM />
     </Window.DataContext>
@@ -72,6 +73,9 @@
                         </DataTemplate>
                         <DataTemplate DataType="{x:Type vm:AdvancedMiningVM}">
                             <pages:AdvancedMiningPage />
+                        </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm:AdvancedDevicesVM}">
+                            <pages:AdvancedDevicesPage />
                         </DataTemplate>
                     </ScrollViewer.Resources>
                     <!-- Content is set to the selected ViewModel, which is automatically converted to the page XAML definition

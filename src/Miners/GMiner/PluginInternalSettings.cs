@@ -54,7 +54,7 @@ namespace GMinerPlugin
                 {
                     Type = MinerOptionType.OptionWithSingleParameter,
                     ID = "gminer_electricity",
-                    LongName = "--electricity_cost"
+                    LongName = "--electricity_cost="
                 },
                 /// <summary>
                 /// option to control GPU intensity (--intensity, 1-100)
@@ -63,6 +63,7 @@ namespace GMinerPlugin
                 {
                     Type = MinerOptionType.OptionWithMultipleParameters,
                     ID = "gminer_intensity",
+                    ShortName = "-i",
                     LongName = "--intensity",
                     Delimiter = " "
                 },
@@ -73,7 +74,27 @@ namespace GMinerPlugin
                 {
                     Type = MinerOptionType.OptionWithSingleParameter,
                     ID = "gminer_logfile",
+                    ShortName = "-l",
                     LongName = "--logfile"
+                },
+                /// <summary>
+                /// space-separated list of OC modes for each device
+                /// </summary>
+                new MinerOption
+                {
+                    Type = MinerOptionType.OptionWithMultipleParameters,
+                    ID = "gminer_oc",
+                    LongName = "--oc",
+                    Delimiter = " "
+                },
+                /// <summary>
+                /// enable OC1 for all devices
+                /// </summary>
+                new MinerOption
+                {
+                    Type = MinerOptionType.OptionIsParameter,
+                    ID = "gminer_oc1",
+                    LongName = "--oc1"
                 }
             },
             TemperatureOptions = new List<MinerOption>{

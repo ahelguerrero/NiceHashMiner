@@ -1,7 +1,9 @@
 ﻿using MinerPlugin;
 using MinerPluginToolkitV1;
+using MinerPluginToolkitV1.Configs;
 using Newtonsoft.Json;
 using NHM.Common;
+using NHM.Common.Device;
 using NHM.Common.Enums;
 using System;
 using System.Collections.Generic;
@@ -11,8 +13,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using MinerPluginToolkitV1.Configs;
-using NHM.Common.Device;
+
 
 namespace MiniZ
 {
@@ -29,29 +30,7 @@ namespace MiniZ
         {
             _mappedDeviceIds = mappedDeviceIds;
         }
-        protected virtual string AlgorithmName(AlgorithmType algorithmType)
-        {
-            switch (algorithmType)
-            {
-                case AlgorithmType.ZHash:
-                    return "144,5";
-                case AlgorithmType.Beam:
-                    return "150,5";
-                case AlgorithmType.BeamV2:
-                    return "150,5,3";
-                default:
-                    return "";
-            }
-        }
-
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), _uuid);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins");
-            var binPath = Path.Combine(pluginRootBins, "miniZ.exe");
-            var binCwd = pluginRootBins;
-            return Tuple.Create(binPath, binCwd);
-        }
+        protected virtual string AlgorithmName(AlgorithmType algorithmType) => PluginSupportedAlgorithms.AlgorithmName(algorithmType);
 
         public async override Task<ApiData> GetMinerStatsDataAsync()
         {

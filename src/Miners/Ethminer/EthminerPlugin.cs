@@ -1,6 +1,5 @@
 ﻿using MinerPluginToolkitV1;
 using MinerPluginToolkitV1.Configs;
-using MinerPluginToolkitV1.Interfaces;
 using NHM.Common.Algorithm;
 using NHM.Common.Device;
 using NHM.Common.Enums;
@@ -10,6 +9,7 @@ using System.Linq;
 
 namespace Ethminer
 {
+#warning "MARK abstract. This is due to API stats blocking so we don't want this instantiated"
     public abstract class EthminerPlugin : PluginBase
     {
         // mandatory constructor
@@ -17,19 +17,26 @@ namespace Ethminer
         {
             // set default internal settings
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
-            // https://github.com/ethereum-mining/ethminer/releases current v 0.18.0 // new alpha check for stable update
+            // https://github.com/ethereum-mining/ethminer/releases
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
+                BinVersion = "v0.18.0",
+                ExePath = new List<string> { "bin", "ethminer.exe" },
                 Urls = new List<string>
                 {
                     "https://github.com/ethereum-mining/ethminer/releases/download/v0.18.0/ethminer-0.18.0-cuda10.0-windows-amd64.zip", // original
                 }
             };
+            PluginMetaInfo = new PluginMetaInfo
+            {
+                PluginDescription = "Ethminer is an Ethash GPU mining worker",
+                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+            };
         }
 
         //public override string PluginUUID => "TODO";
 
-        public override Version Version => new Version(2, 0);
+        public override Version Version => new Version(3, 1);
         public override string Name => "Ethminer";
 
         public override string Author => "info@nicehash.com";
@@ -69,10 +76,8 @@ namespace Ethminer
 
         private IEnumerable<Algorithm> GetSupportedAlgorithms(IGpuDevice gpu)
         {
-            var algorithms = new List<Algorithm>
-            {
-                new Algorithm(PluginUUID, AlgorithmType.DaggerHashimoto),
-            };
+            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsGPU(PluginUUID);
+            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
             var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
             return filteredAlgorithms;
         }
@@ -84,9 +89,7 @@ namespace Ethminer
 
         public override IEnumerable<string> CheckBinaryPackageMissingFiles()
         {
-            var miner = CreateMiner() as IBinAndCwdPathsGettter;
-            if (miner == null) return Enumerable.Empty<string>();
-            var pluginRootBinsPath = miner.GetBinAndCwdPaths().Item2;
+            var pluginRootBinsPath = GetBinAndCwdPaths().Item2;
             return BinaryPackageMissingFilesCheckerHelpers.ReturnMissingFiles(pluginRootBinsPath, new List<string> { "ethminer.exe" });
         }
 

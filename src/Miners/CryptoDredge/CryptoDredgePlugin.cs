@@ -1,13 +1,11 @@
 ﻿using MinerPluginToolkitV1;
 using MinerPluginToolkitV1.Configs;
-using MinerPluginToolkitV1.Interfaces;
 using NHM.Common.Algorithm;
 using NHM.Common.Device;
 using NHM.Common.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static MinerPluginToolkitV1.Checkers;
 
 namespace CryptoDredge
 {
@@ -16,20 +14,28 @@ namespace CryptoDredge
         public CryptoDredgePlugin()
         {
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
-            // https://github.com/technobyl/CryptoDredge/releases | https://cryptodredge.org/ | https://bitcointalk.org/index.php?topic=4807821.0 current 0.21.0
+            // https://github.com/technobyl/CryptoDredge/releases | https://cryptodredge.org/ | https://bitcointalk.org/index.php?topic=4807821.0
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
+                // TODO BinVersion github and bitcointalk missmatch
+                BinVersion = "0.22.0",
+                ExePath = new List<string> { "CryptoDredge_0.22.0", "CryptoDredge.exe" },
                 Urls = new List<string>
                 {
-                    "https://github.com/technobyl/CryptoDredge/releases/download/v0.21.0/CryptoDredge_0.21.0_cuda_10.1_windows.zip", // original source
+                    "https://github.com/technobyl/CryptoDredge/releases/download/v0.22.0/CryptoDredge_0.22.0_cuda_10.1_windows.zip", // original source
                 }
+            };
+            PluginMetaInfo = new PluginMetaInfo
+            {
+                PluginDescription = "Simple in use and highly optimized cryptocurrency mining software with stable power consumption.",
+                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
             };
         }
 
-        public override Version Version => new Version(2, 2);
+        public override Version Version => new Version(3, 2);
         public override string Name => "CryptoDredge";
 
-        public override string Author => "domen.kirnkrefl@nicehash.com";
+        public override string Author => "info@nicehash.com";
 
         public override string PluginUUID => "d9c2e620-7236-11e9-b20c-f9f12eb6d835";
 
@@ -37,7 +43,7 @@ namespace CryptoDredge
         {
             var supported = new Dictionary<BaseDevice, IReadOnlyList<Algorithm>>();
 
-            var isDriverCompatible = Checkers.IsCudaCompatibleDriver(CudaVersion.CUDA_10_1_105, CUDADevice.INSTALLED_NVIDIA_DRIVERS);
+            var isDriverCompatible = Checkers.IsCudaCompatibleDriver(Checkers.CudaVersion.CUDA_10_1_105, CUDADevice.INSTALLED_NVIDIA_DRIVERS);
             if (!isDriverCompatible) return supported;
 
             var cudaGpus = devices.Where(dev => dev is CUDADevice cuda && cuda.SM_major >= 5).Cast<CUDADevice>();
@@ -53,26 +59,20 @@ namespace CryptoDredge
 
         IReadOnlyList<Algorithm> GetSupportedAlgorithms(CUDADevice gpu)
         {
-            var algorithms = new List<Algorithm>
-            {
-                new Algorithm(PluginUUID, AlgorithmType.Lyra2REv3),
-                new Algorithm(PluginUUID, AlgorithmType.X16R),
-                new Algorithm(PluginUUID, AlgorithmType.MTP) { Enabled = false }
-            };
+            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsNVIDIA(PluginUUID).ToList();
+            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
             var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
             return filteredAlgorithms;
         }
 
         protected override MinerBase CreateMinerBase()
         {
-            return new CryptoDredge(PluginUUID);
+            return new CryptoDredge(PluginUUID, PluginSupportedAlgorithms.AlgorithmName, PluginSupportedAlgorithms.DevFee);
         }
 
         public override IEnumerable<string> CheckBinaryPackageMissingFiles()
         {
-            var miner = CreateMiner() as IBinAndCwdPathsGettter;
-            if (miner == null) return Enumerable.Empty<string>();
-            var pluginRootBinsPath = miner.GetBinAndCwdPaths().Item2;
+            var pluginRootBinsPath = GetBinAndCwdPaths().Item2;
             return BinaryPackageMissingFilesCheckerHelpers.ReturnMissingFiles(pluginRootBinsPath, new List<string> { "CryptoDredge.exe" });
         }
 

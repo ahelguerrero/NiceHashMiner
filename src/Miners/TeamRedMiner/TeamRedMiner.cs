@@ -1,16 +1,15 @@
 ﻿using MinerPlugin;
 using MinerPluginToolkitV1;
+using MinerPluginToolkitV1.Configs;
+using MinerPluginToolkitV1.SgminerCommon;
+using NHM.Common;
 using NHM.Common.Enums;
 using System;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using static NHM.Common.StratumServiceHelpers;
-using System.IO;
-using NHM.Common;
-using MinerPluginToolkitV1.SgminerCommon;
-using MinerPluginToolkitV1.Configs;
 
 namespace TeamRedMiner
 {
@@ -29,45 +28,9 @@ namespace TeamRedMiner
         {
         }
 
-        private string AlgoName
-        {
-            get
-            {
-                switch (_algorithmType)
-                {
-                    case AlgorithmType.CryptoNightR:
-                        return "cnr";
-                    case AlgorithmType.Lyra2REv3:
-                        return "lyra2rev3";
-                    case AlgorithmType.X16R:
-                        return "x16r";
-                    case AlgorithmType.Lyra2Z:
-                        return "lyra2z";
-                    case AlgorithmType.GrinCuckatoo31:
-                        return "cuckatoo31_grin";
-                    case AlgorithmType.MTP:
-                        return "mtp";
-                    case AlgorithmType.GrinCuckarood29:
-                        return "cuckarood29_grin";
-                    default:
-                        return "";
-                }
-            }
-        }
+        private string AlgoName => PluginSupportedAlgorithms.AlgorithmName(_algorithmType);
 
-        private double DevFee
-        {
-            get
-            {
-                switch (_algorithmType)
-                {
-                    case AlgorithmType.Lyra2Z:
-                        return 3.0;
-                    default:
-                        return 2.5; 
-                }
-            }
-        }
+        private double DevFee => PluginSupportedAlgorithms.DevFee(_algorithmType);
 
         private string CreateCommandLine(string username)
         {
@@ -169,15 +132,6 @@ namespace TeamRedMiner
             var benchmarkWait = TimeSpan.FromMilliseconds(500);
             var t = MinerToolkit.WaitBenchmarkResult(bp, benchmarkTimeout, benchmarkWait, stop);
             return await t;
-        }
-
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), _uuid);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins", "teamredminer-v0.5.7-win");
-            var binPath = Path.Combine(pluginRootBins, "teamredminer.exe");
-            var binCwd = pluginRootBins;
-            return Tuple.Create(binPath, binCwd);
         }
 
         protected override void Init()

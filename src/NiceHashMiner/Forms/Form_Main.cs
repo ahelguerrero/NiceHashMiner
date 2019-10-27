@@ -51,14 +51,6 @@ namespace NiceHashMiner
             devicesListViewEnableControl1 = devicesMainBoard1.SpeedsControl;
             FormHelpers.SubscribeAllControls(this);
 
-            // Hide plugins button and resize
-            if (MinerPluginsManager.IntegratedPluginsOnly)
-            {
-                this.buttonHelp.Location = this.buttonPlugins.Location;
-                this.buttonPlugins.Enabled = false;
-                this.buttonPlugins.Visible = false;
-            }
-
             Width = ConfigManager.GeneralConfig.MainFormSize.X;
             Height = ConfigManager.GeneralConfig.MainFormSize.Y;
 
@@ -228,9 +220,6 @@ namespace NiceHashMiner
 
             // init active display currency after config load
             ExchangeRateApi.ActiveDisplayCurrency = ConfigManager.GeneralConfig.DisplayCurrency;
-
-            // init factor for Time Unit
-            TimeFactor.UnitType = ConfigManager.GeneralConfig.TimeUnit;
 
             toolStripStatusLabelBalanceDollarValue.Text = "(" + ExchangeRateApi.ActiveDisplayCurrency + ")";
             toolStripStatusLabelBalanceText.Text = RatesAndStatsStates.Instance.LabelBalanceText;

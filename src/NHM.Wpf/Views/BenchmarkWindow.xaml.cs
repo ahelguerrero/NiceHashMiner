@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows;
+using System.Windows.Controls;
 using NHM.Wpf.ViewModels;
 using NHM.Wpf.Views.Common;
 using NHM.Wpf.Views.Settings.Pages;
@@ -26,7 +27,7 @@ namespace NHM.Wpf.Views
             _vm.Devices = devices;
             _vm.OnBenchEnd += OnBenchEnd;
 
-            WindowUtils.Translate(this);
+            WindowUtils.InitWindow(this);
         }
 
         private void OnBenchEnd(object sender, BenchEndEventArgs e)
@@ -73,6 +74,17 @@ namespace NHM.Wpf.Views
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _vm.CommitBenchmarks();
+        }
+
+        private void ContextMenu_OnOpening(object sender, ContextMenuEventArgs e)
+        {
+            // Don't open during bench
+            if (_vm.InBenchmark) e.Handled = true;
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            WindowUtils.SetForceSoftwareRendering(this);
         }
     }
 }

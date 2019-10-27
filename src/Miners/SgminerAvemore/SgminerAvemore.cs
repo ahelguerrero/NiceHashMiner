@@ -1,14 +1,13 @@
-﻿using NHM.Common.Enums;
-using MinerPluginToolkitV1.SgminerCommon;
-using System;
-using System.Linq;
-using System.IO;
-using NHM.Common;
-using System.Threading.Tasks;
-using MinerPlugin;
-using System.Threading;
+﻿using MinerPlugin;
 using MinerPluginToolkitV1;
+using MinerPluginToolkitV1.SgminerCommon;
+using NHM.Common;
+using NHM.Common.Enums;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace SgminerAvemore
 {
@@ -17,20 +16,7 @@ namespace SgminerAvemore
         public SgminerAvemore(string uuid) : base(uuid)
         { }
 
-        protected override string AlgoName
-        {
-            get
-            {
-                switch (_algorithmType)
-                {
-                    // avemore
-                    case AlgorithmType.X16R:
-                        return "x16r";
-                    default:
-                        return "";
-                }
-            }
-        }
+        protected override string AlgoName => PluginSupportedAlgorithms.AlgorithmName(_algorithmType);
 
         private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
@@ -84,17 +70,6 @@ namespace SgminerAvemore
             }
 
             return await base.StartBenchmark(stop, benchmarkType);
-        }
-
-
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            // avemore is differently packed
-            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), _uuid);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins", "avermore-windows");
-            var binPath = Path.Combine(pluginRootBins, "sgminer.exe");
-            var binCwd = pluginRootBins;
-            return Tuple.Create(binPath, binCwd);
         }
     }
 }

@@ -1,14 +1,15 @@
-﻿using System;
-using System.Linq;
-using System.Collections.Generic;
-using NHM.Common;
-using NHMCore.Stats;
-using NHMCore.Switching;
+﻿using NHM.Common;
 using NHM.Common.Algorithm;
 using NHM.Common.Enums;
+using NHMCore.Benchmarking;
 using NHMCore.Configs;
-using NHMCore.Utils;
 using NHMCore.Mining.Plugins;
+using NHMCore.Stats;
+using NHMCore.Switching;
+using NHMCore.Utils;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NHMCore.Mining
 {
@@ -37,6 +38,20 @@ namespace NHMCore.Mining
         /// </summary>
         protected const double Mult = 0.000000001;
 
+        // so we don't want to go to a benchmark loop when benchmarking fails
+        private bool _lastBenchmarkingFailed = false;
+        public bool LastBenchmarkingFailed
+        {
+            get
+            {
+                return _lastBenchmarkingFailed && !BenchmarkManager.DisableLastBenchmarkingFailed;
+            }
+            set
+            {
+                _lastBenchmarkingFailed = value;
+            }
+        }
+
         #region Identity
 
         /// <summary>
@@ -51,9 +66,7 @@ namespace NHMCore.Mining
             get
             {
                 if (PluginContainer == null) return "";
-                var isIntegrated = PluginContainer.IsIntegrated;
-                var minerName = PluginContainer.Name + (isIntegrated ? "" : "(PLUGIN)");
-                return minerName;
+                return PluginContainer.Name;
             }
         }
         /// <summary>
@@ -195,7 +208,7 @@ namespace NHMCore.Mining
         /// <summary>
         /// Indicates whether this algorithm requires a benchmark
         /// </summary>
-        public virtual bool BenchmarkNeeded => BenchmarkSpeed <= 0;
+        public virtual bool BenchmarkNeeded => BenchmarkSpeed <= 0 && !LastBenchmarkingFailed;
 
         protected void NotifySpeedChanged()
         {

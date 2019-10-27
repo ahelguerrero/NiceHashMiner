@@ -1,16 +1,14 @@
-﻿using System;
+﻿using MinerPlugin;
+using MinerPluginToolkitV1;
+using MinerPluginToolkitV1.CCMinerCommon;
+using MinerPluginToolkitV1.Configs;
+using NHM.Common;
+using NHM.Common.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MinerPlugin;
-using MinerPluginToolkitV1;
-using MinerPluginToolkitV1.CCMinerCommon;
-using NHM.Common.Enums;
-using static NHM.Common.StratumServiceHelpers;
-using System.IO;
-using NHM.Common;
-using MinerPluginToolkitV1.Configs;
 
 namespace ZEnemy
 {
@@ -23,22 +21,9 @@ namespace ZEnemy
         public ZEnemy(string uuid) : base(uuid)
         {}
 
-        protected virtual string AlgorithmName(AlgorithmType algorithmType)
-        {
-            switch (algorithmType)
-            {
-                case AlgorithmType.X16R: return "x16r";
-            }
-            return "";
-        }
+        protected virtual string AlgorithmName(AlgorithmType algorithmType) => PluginSupportedAlgorithms.AlgorithmName(algorithmType);
 
-        private double DevFee
-        {
-            get
-            {
-                return 1.0;
-            }
-        }
+        private double DevFee => PluginSupportedAlgorithms.DevFee(_algorithmType);
 
         public override Task<ApiData> GetMinerStatsDataAsync()
         {
@@ -51,7 +36,7 @@ namespace ZEnemy
             // settup times
             var benchmarkTime = MinerBenchmarkTimeSettings.ParseBenchmarkTime(new List<int> { 40, 60, 120 }, MinerBenchmarkTimeSettings, _miningPairs, benchmarkType); // in seconds
 
-            var urlWithPort = GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
+            var urlWithPort = StratumServiceHelpers.GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
             var algo = AlgorithmName(_algorithmType);
 
             var commandLine = $"--algo {algo} --url={urlWithPort} --user {MinerToolkit.DemoUserBTC} --devices {_devices} {_extraLaunchParameters}";
@@ -95,15 +80,6 @@ namespace ZEnemy
             return await t;
         }
 
-        public override Tuple<string, string> GetBinAndCwdPaths()
-        {
-            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), _uuid);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins");
-            var binPath = Path.Combine(pluginRootBins, "z-enemy.exe");
-            var binCwd = pluginRootBins;
-            return Tuple.Create(binPath, binCwd);
-        }
-
         protected override void Init()
         {
             _devices = string.Join(",", _miningPairs.Select(p => p.Device.ID));
@@ -114,7 +90,7 @@ namespace ZEnemy
             // API port function might be blocking
             _apiPort = GetAvaliablePort();
             // instant non blocking
-            var urlWithPort = GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
+            var urlWithPort = StratumServiceHelpers.GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
 
             var algo = AlgorithmName(_algorithmType);
 
