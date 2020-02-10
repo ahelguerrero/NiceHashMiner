@@ -24,15 +24,20 @@ namespace CreateLogReport
             return false;
         }
 
-        private static void Run_device_detection_test_Bat()
+        private static void Run_device_detection_test_Bat(string appRoot)
         {
             try
             {
+                var appRootFull = new Uri(Path.Combine(Environment.CurrentDirectory, appRoot)).LocalPath;
+                var appRootFullExe = Path.Combine(appRootFull, "device_detection_test.bat");
+                Console.WriteLine(appRootFull);
+                Console.WriteLine(appRootFullExe);
                 var startInfo = new ProcessStartInfo
                 {
                     WindowStyle = ProcessWindowStyle.Minimized,
                     UseShellExecute = true,
-                    FileName = @"device_detection_test.bat",
+                    FileName = appRootFullExe,
+                    WorkingDirectory = appRootFull,
                     CreateNoWindow = true
                 };
                 using (var p = new Process { StartInfo = startInfo })
@@ -52,12 +57,13 @@ namespace CreateLogReport
             // TODO
             // RUN device_detection_test.bat
             Console.WriteLine($"Running device_detection_test.bat...");
-            Run_device_detection_test_Bat();
+            var appRoot = args.Length > 0 ? args[0] : "";
+            Run_device_detection_test_Bat(appRoot);
 
             var exePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             var filesToPack = Directory.GetFiles(exePath, "*.*", SearchOption.AllDirectories).Where(s => IsPackExtension(s)).ToList();
             //Console.WriteLine(filesToPack.Count);
-            string archiveFileName = "_archive_logs.zip";
+            string archiveFileName = "tmp._archive_logs.zip";
             Console.Write($"Preparing logs archive file '{archiveFileName}'...");
 
             double max = filesToPack.Count;
@@ -92,7 +98,7 @@ namespace CreateLogReport
             Console.WriteLine("Done.");
             Console.WriteLine($"Packed file: '{archiveFileName}'");
             Console.WriteLine("You can close this window. Press any key to close.");
-            Console.ReadKey();
+            if(args.Length == 0) Console.ReadKey();
         }
     }
 }

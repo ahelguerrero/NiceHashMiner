@@ -1,11 +1,14 @@
+using Microsoft.Win32;
 using NHM.Common;
 using NHM.Common.Enums;
 using NHM.DeviceDetection;
 using NHM.DeviceMonitoring;
+using NHMCore.ApplicationState;
 using NHMCore.Configs;
 using NHMCore.Mining;
 using NHMCore.Mining.Plugins;
-using NHMCore.Stats;
+using NHMCore.Nhmws;
+using NHMCore.Notifications;
 using NHMCore.Utils;
 using System;
 using System.Diagnostics;
@@ -19,8 +22,6 @@ namespace NHMCore
     static partial class ApplicationStateManager
     {
         private static bool isInitFinished = false;
-
-        public static bool FailedRamCheck { get; internal set; }
 
         private class LoaderConverter : IStartupLoader
         {
@@ -54,6 +55,8 @@ namespace NHMCore
                 // Checking System Memory
                 loader.PrimaryProgress?.Report((Tr("Checking System Specs"), nextProgPerc()));
                 await Task.Run(() => SystemSpecs.QueryWin32_OperatingSystemDataAndLog());
+                await Task.Run(() => FilterOSSpecific.GetWindowsVersion());
+                await WindowsUptimeCheck.DelayUptime();
 
                 // TODO extract in function
                 #region Device Detection
@@ -78,6 +81,24 @@ namespace NHMCore
                     loader.PrimaryProgress?.Report((msg, nextProgPerc()));
                 });
                 await DeviceDetection.DetectDevices(devDetectionProgress);
+
+                if (DeviceDetection.DetectionResult.IsOpenClFallback)
+                {
+                    AvailableNotifications.CreateOpenClFallbackInfo();
+                }
+                if (DeviceDetection.DetectionResult.IsDCHDriver) 
+                {
+                    AvailableNotifications.CreateWarningNVIDIADCHInfo();
+                }
+                if (DeviceDetection.DetectionResult.IsDCHDriver && !DeviceDetection.DetectionResult.IsNvmlFallback)
+                {
+                    AvailableNotifications.CreateNVMLFallbackFailInfo();
+                }
+                if (MiscSettings.Instance.UseEthlargement && !Helpers.IsElevated)
+                {
+                    AvailableNotifications.CreateEthlargementElevateInfo();
+                }
+
                 // add devices
                 var detectionResult = DeviceDetection.DetectionResult;
                 var index = 0;
@@ -105,23 +126,19 @@ namespace NHMCore
                     AvailableDevices.AddDevice(new ComputeDevice(cDev, index++, nameCount));
                 }
                 AvailableDevices.UncheckCpuIfGpu();
-                FailedRamCheck = SystemSpecs.CheckRam(AvailableDevices.AvailGpus, AvailableDevices.AvailNvidiaGpuRam, AvailableDevices.AvailAmdGpuRam);
+                var ramCheckOK = SystemSpecs.CheckRam(AvailableDevices.AvailGpus, AvailableDevices.AvailNvidiaGpuRam, AvailableDevices.AvailAmdGpuRam);
+                if (!ramCheckOK)
+                {
+                    AvailableNotifications.CreateIncreaseVirtualMemoryInfo();
+                }
                 // no compatible devices? exit
                 if (AvailableDevices.Devices.Count == 0)
                 {
-                    var result = MessageBox.Show(Tr("No supported devices are found. Select the OK button for help or cancel to continue."),
-                        Tr("No Supported Devices"),
-                        MessageBoxButtons.OKCancel, MessageBoxIcon.Warning);
-                    if (result == DialogResult.OK)
-                    {
-                        Process.Start(Links.NhmNoDevHelp);
-                    }
-                    Application.Exit();
+                    NoDeviceAction?.Invoke();
                     return;
                 }
 
                 // STEP
-                DeviceMonitorManager.DisableDevicePowerModeSettings = ConfigManager.GeneralConfig.DisableDevicePowerModeSettings;
                 loader.PrimaryProgress?.Report((Tr("Initializing device monitoring"), nextProgPerc()));
                 var monitors = await DeviceMonitorManager.GetDeviceMonitors(AvailableDevices.Devices.Select(d => d.BaseDevice), detectionResult.IsDCHDriver);
                 foreach (var monitor in monitors)
@@ -131,37 +148,58 @@ namespace NHMCore
                 }
                 // now init device settings
                 ConfigManager.InitDeviceSettings();
+
+                if (!Helpers.IsElevated && !GlobalDeviceSettings.Instance.DisableDevicePowerModeSettings && AvailableDevices.HasNvidia)
+                {
+                    AvailableNotifications.CreateDeviceMonitoringNvidiaElevateInfo();
+                }
+                // TODO add check and only show if not enabled
+                if (AvailableDevices.HasCpu)
+                {
+                    AvailableNotifications.CreateEnableLargePagesInfo();
+                }
+                // TODO add check and only show if not enabled
+                if (AvailableDevices.HasAmd)
+                {
+                    AvailableNotifications.CreateEnableComputeModeAMDInfo();
+                }
+
                 #endregion Device Detection
 
                 // TODO ADD STEP AND MESSAGE
                 await MinerPluginsManager.CheckAndSwapInstalledExternalPlugins();
+                MinerPluginsManager.CheckAndDeleteNewVersion3Bins();
 
                 // STEP
                 // load plugins
                 loader.PrimaryProgress?.Report((Tr("Loading miner plugins..."), nextProgPerc()));
                 // Plugin Loading
-                MinerPluginsManager.LoadAndInitMinerPlugins();
+                await MinerPluginsManager.LoadAndInitMinerPlugins();
+                MinerPluginsManager.StartLoops(ExitApplication.Token);
                 // commit again benchmarks after loading plugins
                 ConfigManager.CommitBenchmarks();
                 /////////////////////////////////////////////
                 /////// from here on we have our devices and Miners initialized
-                UpdateDevicesStatesAndStartDeviceRefreshTimer();
+                MiningState.Instance.CalculateDevicesStateChange();
 
                 // STEP
                 // connect to nhmws
                 loader.PrimaryProgress?.Report((Tr("Connecting to nhmws..."), nextProgPerc()));
                 // Init ws connection
-                NiceHashStats.StartConnection(Nhmws.NhmSocketAddress);
+                var (btc, worker, group) = CredentialsSettings.Instance.GetCredentials();
+                NHWebSocket.SetCredentials(btc, worker, group);
+                NHWebSocket.StartLoop(NHM.Common.Nhmws.NhmSocketAddress, ExitApplication.Token);
+                
 
                 // STEP
                 // disable windows error reporting
                 loader.PrimaryProgress?.Report((Tr("Setting Windows error reporting..."), nextProgPerc()));
-                Helpers.DisableWindowsErrorReporting(ConfigManager.GeneralConfig.DisableWindowsErrorReporting);
+                Helpers.DisableWindowsErrorReporting(WarningSettings.Instance.DisableWindowsErrorReporting);
 
                 // STEP
                 // Nvidia p0
                 loader.PrimaryProgress?.Report((Tr("Changing all supported NVIDIA GPUs to P0 state..."), nextProgPerc()));
-                if (ConfigManager.GeneralConfig.NVIDIAP0State && AvailableDevices.HasNvidia)
+                if (MiningSettings.Instance.NVIDIAP0State && AvailableDevices.HasNvidia)
                 {
                     Helpers.SetNvidiaP0State();
                 }
@@ -195,20 +233,31 @@ namespace NHMCore
                     if (ExitApplication.IsCancellationRequested) return;
                 }
 
+                //var shouldAutoIncreaseVRAM = Registry.CurrentUser.GetValue(@"Software\" + APP_GUID.GUID + @"\AutoIncreaseVRAM", false);
+                //if (shouldAutoIncreaseVRAM == null)
+                //{
+                //    AvailableNotifications.CreateIncreaseVirtualMemoryInfo();
+                //} else
+                //{
+                //    if ((bool)shouldAutoIncreaseVRAM == true)
+                //    {
+                //        var vramSum = AvailableDevices.AvailNvidiaGpuRam + AvailableDevices.AvailAmdGpuRam;
+                //    }
+                //}
+
+                if (!WindowsDefender.IsAlreadySet())
+                {
+                    AvailableNotifications.CreateAddWindowsDefenderExceptionInfo();
+                }
 
                 // re-check after download we should have all miner files
                 var missingMinerBins = MinerPluginsManager.GetMissingMiners().Count > 0;
                 if (missingMinerBins)
                 {
-                    var result = MessageBox.Show(Tr("There are missing files from last Miners Initialization. Please make sure that your anti-virus is not blocking the application. {0} might not work properly without missing files. Click Yes to reinitialize {0} to try to fix this issue.", NHMProductInfo.Name),
-                        Tr("Warning!"),
-                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (result == DialogResult.Yes)
-                    {
-                        RestartProgram();
-                        return;
-                    }
+                    AvailableNotifications.CreateMissingMinersInfo();
                 }
+                // fire up mining manager loop
+                MiningManager.StartLoops(ExitApplication.Token, GetUsername());
 
                 // STEP
                 // VC_REDIST check
@@ -235,7 +284,7 @@ namespace NHMCore
                 // Cross reference plugin indexes
                 loader.PrimaryProgress?.Report((Tr("Cross referencing miner device IDs..."), nextProgPerc()));
                 // Detected devices cross reference with miner indexes
-                await MinerPluginsManager.DevicesCrossReferenceIDsWithMinerIndexes();
+                await MinerPluginsManager.DevicesCrossReferenceIDsWithMinerIndexes(loader);
             }
             catch (Exception e)
             {
@@ -244,28 +293,14 @@ namespace NHMCore
             finally
             {
                 isInitFinished = true;
-                NiceHashStats.NotifyStateChangedTask();
+                NHWebSocket.NotifyStateChanged();
+
+                // start update checker
+                // updater loops after we finish
+                UpdateHelpers.StartLoops(ExitApplication.Token);
+                // restore last mining states
+                await RestoreMiningState();
             }
         }
-
-        // make these non modal
-        //public static void ShowQueryWarnings()
-        //{
-        //    if (query.FailedRamCheck)
-        //    {
-        //        MessageBox.Show(Tr("{0} recommends increasing virtual memory size so that all algorithms would work fine.", NHMProductInfo.Name),
-        //            Tr("Warning!"),
-        //            MessageBoxButtons.OK);
-        //    }
-
-        //    if (query.FailedVidControllerStatus)
-        //    {
-        //        var msg = Tr("We have detected a Video Controller that is not working properly. {0} will not be able to use this Video Controller for mining. We advise you to restart your computer, or reinstall your Video Controller drivers.", NHMProductInfo.Name);
-        //        msg += '\n' + query.FailedVidControllerInfo;
-        //        MessageBox.Show(msg,
-        //            Tr("Warning! Video Controller not operating correctly"),
-        //            MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        //    }
-        //}
     }
 }

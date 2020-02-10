@@ -1,16 +1,16 @@
 using NHM.Common;
 using NHM.Common.Enums;
-using NHMCore.Benchmarking;
+using NHMCore.ApplicationState;
+using NHMCore.Mining.Benchmarking;
 using NHMCore.Configs;
 using NHMCore.Mining;
-using NHMCore.Utils;
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-
+using MinerPluginToolkitV1.Configs;
+using System.IO;
+using System;
 
 namespace NHMCore
 {
@@ -18,126 +18,73 @@ namespace NHMCore
     {
         public static string GetUsername()
         {
-            if (MiningState.Instance.IsDemoMining) {
+            if (MiningState.Instance.IsDemoMining || !CredentialsSettings.Instance.IsBitcoinAddressValid) {
                 return DemoUser.BTC;
             }
-            var btc = ConfigManager.GeneralConfig.BitcoinAddress.Trim();
-            return $"{btc}${RigID}";
+            var btc = CredentialsSettings.Instance.BitcoinAddress.Trim();
+            return $"{btc}${RigID()}";
         }
 
-        private static ConcurrentQueue<(ComputeDevice, DeviceState)> UpdateDevicesToMineStates { get; set; } = new ConcurrentQueue<(ComputeDevice, DeviceState)>();
+        private static ConcurrentQueue<(ComputeDevice, DeviceState)> _scheduleUpdateDevicesToMineStates { get; set; } = new ConcurrentQueue<(ComputeDevice, DeviceState)>();
 
-        private static void StartMiningOnDevices(params ComputeDevice[] startDevices)
+        private static void ScheduleStartMiningOnDevices(params ComputeDevice[] startDevices)
         {
-            if (startDevices == null || startDevices.Length == 0) return;
-
-            foreach (var startDevice in startDevices)
+            foreach (var startDevice in startDevices ?? Enumerable.Empty<ComputeDevice>())
             {
                 startDevice.IsPendingChange = true;
-                UpdateDevicesToMineStates.Enqueue((startDevice, DeviceState.Mining));
+                _scheduleUpdateDevicesToMineStates.Enqueue((startDevice, DeviceState.Mining));
             }
-            _UpdateDevicesToMineTaskDelayed.ExecuteDelayed(CancellationToken.None);
         }
 
-        private static void StopMiningOnDevices(params ComputeDevice[] stopDevices)
+        private static void ScheduleStopMiningOnDevices(params ComputeDevice[] stopDevices)
         {
-            if (stopDevices == null || stopDevices.Length == 0) return;
-
-            foreach (var stopDevice in stopDevices)
+            foreach (var stopDevice in stopDevices ?? Enumerable.Empty<ComputeDevice>())
             {
                 stopDevice.IsPendingChange = true;
-                UpdateDevicesToMineStates.Enqueue((stopDevice, DeviceState.Stopped));
+                _scheduleUpdateDevicesToMineStates.Enqueue((stopDevice, DeviceState.Stopped));
             }
-            _UpdateDevicesToMineTaskDelayed.ExecuteDelayed(CancellationToken.None);
         }
-
-        private static DelayedSingleExecActionTask _UpdateDevicesToMineTaskDelayed = new DelayedSingleExecActionTask
-            (
-            async () => await UpdateDevicesToMineTask(),
-            TimeSpan.FromMilliseconds(100)
-            );
 
         private static async Task UpdateDevicesToMineTask()
         {
             // drain queue 
-            var _updateDeviceStates = new Dictionary<ComputeDevice, DeviceState>();
-            while (UpdateDevicesToMineStates.TryDequeue(out var pair))
+            var updateDeviceStates = new Dictionary<ComputeDevice, DeviceState>();
+            while (_scheduleUpdateDevicesToMineStates.TryDequeue(out var pair))
             {
                 var (device, state) = pair;
-                _updateDeviceStates[device] = state;
+                updateDeviceStates[device] = state;
             }
             // and update states
-            foreach (var newState in _updateDeviceStates)
+            foreach (var newState in updateDeviceStates)
             {
                 var device = newState.Key;
                 var setState = newState.Value;
                 device.State = setState; // THIS TRIGERS STATE CHANGE
             }
             var devicesToMine = AvailableDevices.Devices.Where(dev => dev.State == DeviceState.Mining).ToList();
-            foreach (var newState in _updateDeviceStates)
-            {
-                var device = newState.Key;
-                var setState = newState.Value;
-                //devicesToMine.Con
-            }
-
             if (devicesToMine.Count > 0) {
                 StartMining();
-                await MiningManager.UpdateMiningSession(devicesToMine, GetUsername());
+                await MiningManager.UpdateMiningSession(devicesToMine);
             } else {
                 await StopMining();
             }
-            // TODO implement and cleat devicePending state changed
-            foreach (var newState in _updateDeviceStates)
+            // TODO implement and clear devicePending state changed
+            foreach (var newState in updateDeviceStates)
             {
                 var device = newState.Key;
                 device.IsPendingChange = false;
             }
         }
 
-        private static void RestartMinersIfMining()
+        public static async Task<bool> StartSingleDevicePublic(ComputeDevice device)
         {
-            // if mining update the mining manager
-            if (MiningState.Instance.IsCurrentlyMining)
-            {
-                MiningManager.RestartMiners(GetUsername());
-            }
-        }
-
-        public static void ResumeMiners()
-        {
-            if (_resumeOldState)
-            {
-                _resumeOldState = false;
-                foreach (var dev in _resumeDevs)
-                {
-                    StartDevice(dev);
-                }
-                _resumeDevs.Clear();
-            }
-            else
-            {
-                RestartMinersIfMining();
-            }
-        }
-
-        private static bool _resumeOldState = false;
-        private static HashSet<ComputeDevice> _resumeDevs = new HashSet<ComputeDevice>();
-        public static void PauseMiners()
-        {
-            _resumeOldState = CurrentForm == CurrentFormState.Main;
-            foreach(var dev in AvailableDevices.Devices)
-            {
-                if (dev.State == DeviceState.Benchmarking || dev.State == DeviceState.Mining)
-                {
-                    _resumeDevs.Add(dev);
-                    StopAllDevice();
-                }
-            }
+            if (device.IsPendingChange) return false;
+            await StartDeviceTask(device);
+            return true;
         }
 
         // TODO add check for any enabled algorithms
-        public static (bool started, string failReason) StartAllAvailableDevices()
+        public static async Task<(bool started, string failReason)> StartAllAvailableDevicesTask()
         {
             // TODO consider trying to start the error state devices as well
             var devicesToStart = AvailableDevices.Devices.Where(dev => dev.State == DeviceState.Stopped);
@@ -148,36 +95,44 @@ namespace NHMCore
             // TODO for now no partial success so if one fails send back that everything fails
             var started = true;
             var failReason = "";
-
+            var startTasks = new List<Task<(bool start, string failReason)>>();
+            var startTasksAndMining = new List<Task>();
             foreach (var startDevice in devicesToStart)
             {
-                var (deviceStarted, deviceFailReason) = StartDevice(startDevice);
+                // executeStart later in batch
+                var startTask = StartDeviceTask(startDevice, false, false);
+                startTasks.Add(startTask);
+                startTasksAndMining.Add(startTask);
+            }
+            // finally add update devices to mine task
+            startTasksAndMining.Add(UpdateDevicesToMineTask());
+            // and await
+            await Task.WhenAll(startTasksAndMining);
+            
+            // get task statuses
+            var startDeviceTasks = devicesToStart.Zip(startTasks, (dev, task) => new { Device = dev, Task = task });
+            foreach (var pair in startDeviceTasks)
+            {
+                var (deviceStarted, deviceFailReason) = pair.Task.Result;
                 started &= deviceStarted;
                 if (!deviceStarted)
                 {
-                    failReason += $"{startDevice.Name} {deviceFailReason};";
+                    failReason += $"{pair.Device.Name} {deviceFailReason};";
                 }
             }
-
             return (started, failReason);
         }
 
-        public static bool StartSingleDevicePublic(ComputeDevice device)
+        internal static async Task<(bool started, string failReason)> StartDeviceTask(ComputeDevice device, bool skipBenchmark = false, bool executeStart = true)
         {
-            if (device.IsPendingChange) return false;
-            StartDevice(device);
-            return true;
-        }
-
-        internal static (bool started, string failReason) StartDevice(ComputeDevice device, bool skipBenchmark = false)
-        {
+            device.StartState = true;
             // we can only start a device it is already stopped
             if (device.State == DeviceState.Disabled)
             {
                 return (false, "Device is disabled");
             }
 
-            if (device.State != DeviceState.Stopped && !skipBenchmark)
+            if (device.State != DeviceState.Stopped && device.State != DeviceState.Error && !skipBenchmark)
             {
                 return (false, "Device already started");
             }
@@ -211,15 +166,24 @@ namespace NHMCore
             }
             else
             {
-                StartMiningOnDevices(device);
+                ScheduleStartMiningOnDevices(device);
+                if (executeStart)
+                {
+                    await UpdateDevicesToMineTask();
+                }
             }
-
-            RefreshDeviceListView?.Invoke(null, null);
 
             return (started, failReason);
         }
 
-        public static (bool stopped, string failReason) StopAllDevice() {
+        public static async Task<bool> StopSingleDevicePublic(ComputeDevice device)
+        {
+            if (device.IsPendingChange) return false;
+            await StopDeviceTask(device);
+            return true;
+        }
+
+        public static async Task<(bool stopped, string failReason)> StopAllDevicesTask() {
             // TODO when starting and stopping we are not taking Pending and Error states into account
             var devicesToStop = AvailableDevices.Devices.Where(dev => dev.State == DeviceState.Mining || dev.State == DeviceState.Benchmarking);
             if (devicesToStop.Count() == 0)
@@ -227,43 +191,168 @@ namespace NHMCore
                 return (false, "No new devices to stop");
             }
 
+            var anyMining = devicesToStop.Any(dev => dev.State == DeviceState.Mining);
             var stopped = true;
             var failReason = "";
+            var stopTasks = new List<Task<(bool stopped, string failReason)>>();
             foreach (var stopDevice in devicesToStop)
             {
-                var (deviceStopped, deviceFailReason) = StopDevice(stopDevice);
+                stopTasks.Add(StopDeviceTask(stopDevice, false));
+            }
+            // TODO simplify this after MiningManager refactor
+            if (anyMining)
+            {
+                var stopTasksAndMining = new List<Task>();
+                stopTasksAndMining.Add(UpdateDevicesToMineTask());
+                foreach (var t in stopTasks) stopTasksAndMining.Add(t);
+                await Task.WhenAll(stopTasksAndMining);
+            }
+            else
+            {
+                await Task.WhenAll(stopTasks);
+            }
+            
+            var stopedDeviceTasks = devicesToStop.Zip(stopTasks, (dev, task) => new { Device = dev, Task = task });
+            foreach (var pair in stopedDeviceTasks)
+            {
+                var (deviceStopped, deviceFailReason) = pair.Task.Result;
                 stopped &= deviceStopped;
                 if (!deviceStopped)
                 {
-                    failReason += $"{stopDevice.Name} {deviceFailReason};";
+                    failReason += $"{pair.Device.Name} {deviceFailReason};";
                 }
             }
             return (stopped, failReason);
         }
 
-        public static bool StopSingleDevicePublic(ComputeDevice device)
+        internal static async Task<(bool stopped, string failReason)> StopDeviceTask(ComputeDevice device, bool executeStop = true)
         {
-            if (device.IsPendingChange) return false;
-            StopDevice(device);
-            return true;
-        }
-
-        internal static (bool stopped, string failReason) StopDevice(ComputeDevice device)
-        {
+            device.StartState = false;
             // we can only stop a device it is mining or benchmarking
             switch (device.State)
             {
                 case DeviceState.Stopped:
                     return (false, $"Device {device.Uuid} already stopped");
                 case DeviceState.Benchmarking:
-                    BenchmarkManager.StopBenchmarForDevice(device); // TODO benchmarking is in a Task
+                    await BenchmarkManager.StopBenchmarForDevice(device); // TODO benchmarking is in a Task
                     return (true, "");
                 case DeviceState.Mining:
-                    StopMiningOnDevices(device);
+                    ScheduleStopMiningOnDevices(device);
+                    if (executeStop)
+                    {
+                        await UpdateDevicesToMineTask();
+                    }
                     return (true, "");
                 default:
                     return (false, $"Cannot handle state {device.State.ToString()} for device {device.Uuid}");
             }
         }
+
+        // TODO make this smarter 
+        // TODO this is after we are finished with miner plugin install/update/remove
+        internal static async Task RestartDevicesState()
+        {
+            var stopTasks = new List<Task>();
+            var devicesToStart = new List<ComputeDevice>();
+            var devicesToBenchmark = new List<ComputeDevice>();
+            foreach (var dev in AvailableDevices.Devices)
+            {
+                if (dev.StartState)
+                {
+                    devicesToStart.Add(dev);
+                }
+                else if (dev.State == DeviceState.Benchmarking)
+                {
+                    devicesToBenchmark.Add(dev); // TODO should we start benchmarks without starting mining afterwards???
+                }
+                stopTasks.Add(StopDeviceTask(dev, false));
+            }
+            stopTasks.Add(UpdateDevicesToMineTask());
+            await Task.WhenAll(stopTasks);
+
+            foreach (var benchDev in devicesToBenchmark)
+            {
+                BenchmarkManager.StartBenchmarForDevice(benchDev, new BenchmarkStartSettings
+                {
+                    StartMiningAfterBenchmark = true, // TODO should we start mining after benchmark?
+                    BenchmarkPerformanceType = BenchmarkManagerState.Instance.SelectedBenchmarkType,
+                    BenchmarkOption = BenchmarkOption.ZeroOrReBenchOnly
+                });
+            }
+
+            var startTasks = new List<Task>();
+            // now attempt restart 
+            foreach (var dev in devicesToStart)
+            {
+                startTasks.Add(StartDeviceTask(dev, false, false));
+            }
+            startTasks.Add(UpdateDevicesToMineTask());
+            await Task.WhenAll(startTasks);
+        }
+
+        // Check all devices that have (re)benchmarks
+        public static void StartBenchmark()
+        {
+            var devices = AvailableDevices.Devices.Where(device => device.AnyEnabledAlgorithmsNeedBenchmarking() && device.State == DeviceState.Stopped);
+            foreach (var device in devices)
+            {
+                BenchmarkManager.StartBenchmarForDevice(device, new BenchmarkStartSettings
+                {
+                    StartMiningAfterBenchmark = true, // TODO should we start mining after benchmark?
+                    BenchmarkPerformanceType = BenchmarkManagerState.Instance.SelectedBenchmarkType,
+                    BenchmarkOption = BenchmarkOption.ZeroOrReBenchOnly
+                });
+            }
+        }
+
+        public static Task StopBenchmark()
+        {
+            return BenchmarkManager.Stop();
+        }
+
+        #region Updater mining state save/restore
+        private static string _miningStateFilePath => Paths.RootPath("DeviceRestoreStates.json");
+        private struct DeviceRestoreState
+        {
+            public bool IsStarted { get; set; }
+            public DeviceState LastState { get; set; }
+        }
+        internal static void SaveMiningState()
+        {
+            var devicesRestoreStates = new Dictionary<string, DeviceRestoreState>();
+            foreach (var dev in AvailableDevices.Devices)
+            {
+                devicesRestoreStates[dev.Uuid] = new DeviceRestoreState { IsStarted = dev.StartState, LastState = dev.State };
+            }
+            InternalConfigs.WriteFileSettings(_miningStateFilePath, devicesRestoreStates);
+        }
+
+        internal static async Task RestoreMiningState()
+        {
+            var devicesRestoreStates = InternalConfigs.ReadFileSettings<Dictionary<string, DeviceRestoreState>>(_miningStateFilePath);
+            if (devicesRestoreStates == null) return;
+            try
+            {
+                File.Delete(_miningStateFilePath);
+            }
+            catch (Exception e)
+            {
+                Logger.Error("ApplicationStateManager.Mining", $"RestoreMiningState Exception: {e.Message}");
+            }
+            // restore states
+            var startTasks = new List<Task>();
+            // now attempt restart 
+            foreach (var devState in devicesRestoreStates)
+            {
+                var dev = AvailableDevices.GetDeviceWithUuid(devState.Key);
+                var shouldStart = devState.Value.IsStarted || devState.Value.LastState == DeviceState.Benchmarking || devState.Value.LastState == DeviceState.Mining;
+                if (dev == null || shouldStart == false) continue;
+                startTasks.Add(StartDeviceTask(dev, false, false));
+            }
+            startTasks.Add(UpdateDevicesToMineTask());
+            await Task.WhenAll(startTasks);
+        }
+
+        #endregion Update state push/pop
     }
 }

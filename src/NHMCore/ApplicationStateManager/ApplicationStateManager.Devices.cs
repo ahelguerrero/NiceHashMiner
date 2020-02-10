@@ -1,57 +1,45 @@
 using NHMCore.Mining;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace NHMCore
 {
     static partial class ApplicationStateManager
     {
-#region device state checkers
-        public static bool IsEnableAllDevicesRedundantOperation()
+
+        internal static async Task SetDeviceEnabledState(ComputeDevice dev, bool enabled)
         {
-            var allEnabled = AvailableDevices.Devices.All(dev => !dev.IsDisabled);
-            return allEnabled;
+            if (!enabled)
+            {
+                await StopDeviceTask(dev, false);
+            }
+            dev.Enabled = enabled;
+            Configs.ConfigManager.CommitBenchmarksForDevice(dev);
         }
 
-        public static bool IsDisableAllDevicesRedundantOperation()
-        {
-            return !IsEnableAllDevicesRedundantOperation();
-        }
-
-#endregion device state checkers
-
-        public static void SetDeviceEnabledState(object sender, (string uuid, bool enabled) args)
+        public static async Task SetDeviceEnabledState(object sender, (string uuid, bool enabled) args)
         {
             var (uuid, enabled) = args;
             // TODO log sender
-            var devicesToDisable = new List<ComputeDevice>();
-            var isDisableAllDevices = "*" == uuid;
-            if (isDisableAllDevices)
+            var devicesToSet = new List<ComputeDevice>();
+            var isAllDevices = "*" == uuid;
+            if (isAllDevices)
             {
-                devicesToDisable.AddRange(AvailableDevices.Devices.Where(dev => !dev.IsDisabled));
+                devicesToSet.AddRange(AvailableDevices.Devices);
             }
             else
             {
                 var devWithUUID = AvailableDevices.GetDeviceWithUuidOrB64Uuid(uuid);
                 if (devWithUUID != null)
                 {
-                    devicesToDisable.Add(devWithUUID);
+                    devicesToSet.Add(devWithUUID);
                 }
             }
-            // execute enabling/disabling
-            foreach (var dev in devicesToDisable)
-            {
-                if (!enabled)
-                {
-                    StopDevice(dev);
-                }
-
-                dev.Enabled = enabled;
-            }
-            Configs.ConfigManager.GeneralConfigFileCommit();
-
-            // finally refresh state
-            RefreshDeviceListView?.Invoke(null, null);
+            var tasks = devicesToSet.Select(dev => SetDeviceEnabledState(dev, enabled));
+            // await tasks
+            await Task.WhenAll(tasks);
+            await UpdateDevicesToMineTask();
         }
     }
 }

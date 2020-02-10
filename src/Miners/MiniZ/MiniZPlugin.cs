@@ -12,32 +12,34 @@ using System.Threading.Tasks;
 
 namespace MiniZ
 {
-    public class MiniZPlugin : PluginBase, IDevicesCrossReference
+    public partial class MiniZPlugin : PluginBase, IDevicesCrossReference
     {
         public MiniZPlugin()
         {
+            // mandatory init
+            InitInsideConstuctorPluginSupportedAlgorithmsSettings();
             // set default internal settings
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
             // https://miniz.ch/usage/#command-line-arguments | https://miniz.ch/download/#latest-version
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
-                BinVersion = "v1.5q6",
+                BinVersion = "v1.5t",
                 ExePath = new List<string> { "miniZ.exe" },
                 Urls = new List<string>
                 {
-                    "https://github.com/nicehash/MinerDownloads/releases/download/1.9.1.12b/miniZ_v1.5q6_cuda10_win-x64.zip",
-                    "https://miniz.ch/?smd_process_download=1&download_id=3083", // original
+                    "https://github.com/nicehash/MinerDownloads/releases/download/3.0.0.2/miniZ_v1.5t_cuda10_win-x64.zip",
+                    "https://miniz.ch/?smd_process_download=1&download_id=3369", // original
                 }
             };
             PluginMetaInfo = new PluginMetaInfo
             {
                 PluginDescription = "miniZ is a fast and friendly Equihash miner.",
-                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+                SupportedDevicesAlgorithms = SupportedDevicesAlgorithmsDict()
             };
         }
         public override string PluginUUID => "59bba2c0-b1ef-11e9-8e4e-bb1e2c6e76b4";
 
-        public override Version Version => new Version(3, 1);
+        public override Version Version => new Version(5, 1);
 
         public override string Name => "MiniZ";
 
@@ -67,25 +69,17 @@ namespace MiniZ
             {
                 _mappedDeviceIds[gpu.UUID] = pcieId;
                 ++pcieId;
-                var algos = GetSupportedAlgorithms(gpu).ToList();
+                var algos = GetSupportedAlgorithmsForDevice(gpu).ToList();
                 if (algos.Count > 0) supported.Add(gpu, algos);
             }
 
             return supported;
         }
 
-        IReadOnlyList<Algorithm> GetSupportedAlgorithms(CUDADevice gpu)
-        {
-            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsNVIDIA(PluginUUID);
-            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
-            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
-            return filteredAlgorithms;
-        }
-
         public async Task DevicesCrossReference(IEnumerable<BaseDevice> devices)
         {
             if (_mappedDeviceIds.Count == 0) return;
-            // TODO will block
+            // will block
             var minerBinPath = GetBinAndCwdPaths().Item1;
             var output = await DevicesCrossReferenceHelpers.MinerOutput(minerBinPath, "-ci");
             var mappedDevs = DevicesListParser.ParseMiniZOutput(output, devices.ToList());
@@ -109,11 +103,11 @@ namespace MiniZ
             try
             {
                 if (ids.Count() == 0) return false;
-                if (benchmarkedPluginVersion.Major < 3 && ids.FirstOrDefault() == AlgorithmType.BeamV2)
+                if(benchmarkedPluginVersion.Major <= 5)
                 {
+                    if (benchmarkedPluginVersion.Major == 5 && benchmarkedPluginVersion.Minor == 1) return false;
                     return true;
                 }
-                return false;
             }
             catch (Exception e)
             {

@@ -1,332 +1,542 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{A70B0AEE-15C4-49E1-9DC9-B936A1EBC2B5}</ProjectGuid>
+    <ProjectGuid>{56653651-3BF1-4A89-A20C-3178C06A29A3}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>NiceHashMiner</RootNamespace>
     <AssemblyName>NiceHashMiner</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <TargetFrameworkProfile />
-    <IsWebBootstrapper>false</IsWebBootstrapper>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Disk</InstallFrom>
-    <UpdateEnabled>false</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <WarningLevel>4</WarningLevel>
     <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <OutputPath>..\..\Debug\app\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\..\Release\</OutputPath>
+    <OutputPath>..\..\Release\app\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <UseVSHostingProcess>true</UseVSHostingProcess>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>..\..\Resources\logo.ico</ApplicationIcon>
-  </PropertyGroup>
-  <PropertyGroup>
-    <StartupObject />
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'FillSMA|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>..\..\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;FILLSMA</DefineConstants>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <Prefer32Bit>false</Prefer32Bit>
+    <ApplicationIcon>Resources\logo.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Hardcodet.Wpf.TaskbarNotification, Version=1.0.5.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Hardcodet.NotifyIcon.Wpf.1.0.8\lib\net45\Hardcodet.Wpf.TaskbarNotification.dll</HintPath>
+    </Reference>
     <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\log4net.2.0.8\lib\net45-full\log4net.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="PresentationFramework.Aero" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Deployment" />
-    <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.Management" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.ValueTuple.4.5.0\lib\netstandard1.0\System.ValueTuple.dll</HintPath>
     </Reference>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xaml">
+      <RequiredTargetFramework>4.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="UIAutomationProvider" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Forms\Components\DevicesListViewBenchmarkControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\DevicesListViewBenchmarkControl.Designer.cs">
-      <DependentUpon>DevicesListViewBenchmarkControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\DevicesListViewEnableControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\DevicesListViewEnableControl.Designer.cs">
-      <DependentUpon>DevicesListViewEnableControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\DevicesListViewSpeedControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\DevicesListViewSpeedControl.Designer.cs">
-      <DependentUpon>DevicesListViewSpeedControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\DevicesMainBoard.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\DevicesMainBoard.Designer.cs">
-      <DependentUpon>DevicesMainBoard.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\DevicesMainBoardDevicesListViewSpeedControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\DevicesMainBoardDevicesListViewSpeedControl.Designer.cs">
-      <DependentUpon>DevicesMainBoardDevicesListViewSpeedControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\PluginInfoDetails.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\PluginInfoDetails.Designer.cs">
-      <DependentUpon>PluginInfoDetails.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\PluginInfoItem.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\PluginInfoItem.Designer.cs">
-      <DependentUpon>PluginInfoItem.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\PluginInfoItemRow.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\PluginInfoItemRow.Designer.cs">
-      <DependentUpon>PluginInfoItemRow.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\StartupLoadingControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\StartupLoadingControl.Designer.cs">
-      <DependentUpon>StartupLoadingControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\EnterBTCDialogSwitch.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\EnterBTCDialogSwitch.Designer.cs">
-      <DependentUpon>EnterBTCDialogSwitch.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormEula.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormEula.Designer.cs">
-      <DependentUpon>FormEula.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormHelpers.cs" />
-    <Compile Include="Forms\Form_Benchmark.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Form_Benchmark.Designer.cs">
-      <DependentUpon>Form_Benchmark.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Form_ChooseUpdate.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Form_ChooseUpdate.Designer.cs">
-      <DependentUpon>Form_ChooseUpdate.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Form_Main.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Form_Main.Designer.cs">
-      <DependentUpon>Form_Main.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Form_MinerPlugins.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Form_MinerPlugins.Designer.cs">
-      <DependentUpon>Form_MinerPlugins.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Form_Settings.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Form_Settings.Designer.cs">
-      <DependentUpon>Form_Settings.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Form_TDPSettings.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Form_TDPSettings.Designer.cs">
-      <DependentUpon>Form_TDPSettings.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\IconEx.cs" />
-    <Compile Include="Forms\LoginForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\LoginForm.Designer.cs">
-      <DependentUpon>LoginForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\AlgorithmsListView.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\AlgorithmsListView.Designer.cs">
-      <DependentUpon>AlgorithmsListView.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\AlgorithmSettingsControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\AlgorithmSettingsControl.Designer.cs">
-      <DependentUpon>AlgorithmSettingsControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\BenchmarkOptions.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\BenchmarkOptions.Designer.cs">
-      <DependentUpon>BenchmarkOptions.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Components\Field.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Forms\Components\Field.Designer.cs">
-      <DependentUpon>Field.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Form_ChooseLanguage.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Form_ChooseLanguage.Designer.cs">
-      <DependentUpon>Form_ChooseLanguage.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\Form_3rdParty_TOS.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Form_3rdParty_TOS.Designer.cs">
-      <DependentUpon>Form_3rdParty_TOS.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\MinerFileNotFoundDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\MinerFileNotFoundDialog.Designer.cs">
-      <DependentUpon>MinerFileNotFoundDialog.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Forms\TextBoxKeyPressEvents.cs" />
-    <EmbeddedResource Include="Forms\Components\AlgorithmsListView.resx">
-      <DependentUpon>AlgorithmsListView.cs</DependentUpon>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Components\AlgorithmSettingsControl.resx">
-      <DependentUpon>AlgorithmSettingsControl.cs</DependentUpon>
+    </ApplicationDefinition>
+    <Compile Include="AppRuntimeSettings.cs" />
+    <Compile Include="Converters\LoadValueToText.cs" />
+    <Compile Include="Converters\NulBoolToVisibilityConverterFalse.cs" />
+    <Compile Include="Converters\StatusColorConverter.cs" />
+    <Compile Include="Converters\TemperatureValueToText.cs" />
+    <Compile Include="CustomDialogManager.cs" />
+    <Compile Include="IThemeSetter.cs" />
+    <Compile Include="Properties\Annotations.cs" />
+    <Compile Include="ThemeSetterManager.cs" />
+    <Compile Include="ViewModels\BaseVM.cs" />
+    <Compile Include="ViewModels\BenchmarkViewModel.cs" />
+    <Compile Include="Converters\ConverterBase.cs" />
+    <Compile Include="Converters\DoubleToStringConverter.cs" />
+    <Compile Include="Converters\EnumToBoolConverter.cs" />
+    <Compile Include="Converters\HashrateConverter.cs" />
+    <Compile Include="Converters\NulBoolToBoolConverter.cs" />
+    <Compile Include="Converters\NulBoolToVisibilityConverter.cs" />
+    <Compile Include="Converters\TranslatingConverter.cs" />
+    <Compile Include="ViewModels\ChooseLanguageVM.cs" />
+    <Compile Include="ViewModels\DashboardViewModel.cs" />
+    <Compile Include="ViewModels\DevicesViewModel.cs" />
+    <Compile Include="ViewModels\MainVM.cs" />
+    <Compile Include="ViewModels\Models\BaseCommand.cs" />
+    <Compile Include="ViewModels\Models\DeviceData.cs" />
+    <Compile Include="ViewModels\Models\DeviceDataTDP.cs" />
+    <Compile Include="ViewModels\Models\IMiningData.cs" />
+    <Compile Include="ViewModels\Models\LoadProgress.cs" />
+    <Compile Include="ViewModels\Models\MiningData.cs" />
+    <Compile Include="ViewModels\Models\TotalMiningData.cs" />
+    <Compile Include="ViewModels\Plugins\PluginEntryVM.cs" />
+    <Compile Include="ViewModels\StartupLoadingVM.cs" />
+    <Compile Include="Validators\BtcWorkerValidator.cs" />
+    <Compile Include="Validators\ValidatorBase.cs" />
+    <Compile Include="Views\Benchmark\BenchmarkTypeToStringConverter.cs" />
+    <Compile Include="Views\Benchmark\ComputeDeviceItem\AlgorithmItemStatusVisibilityConverter.cs" />
+    <Compile Include="Views\Benchmark\ComputeDeviceItem\AlgorithmItemStatusTextConverter.cs" />
+    <Compile Include="Views\Benchmark\ComputeDeviceItem\AlgorithmSettings.xaml.cs">
+      <DependentUpon>AlgorithmSettings.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Benchmark\ComputeDeviceItem\ComputeDeviceItemHeader.xaml.cs">
+      <DependentUpon>ComputeDeviceItemHeader.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Benchmark\ComputeDeviceItem\DeviceStatusVisibilityConverter.cs" />
+    <Compile Include="Views\Common\CustomDialog.xaml.cs">
+      <DependentUpon>CustomDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Common\EnterWalletDialog.xaml.cs">
+      <DependentUpon>EnterWalletDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Common\EnterWorkernameDialog.xaml.cs">
+      <DependentUpon>EnterWorkernameDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\EulaWindowSecondShort.xaml.cs">
+      <DependentUpon>EulaWindowSecondShort.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Benchmark\Benchmarks.xaml.cs">
+      <DependentUpon>Benchmarks.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Benchmark\ComputeDeviceItem\AlgorithmItem.xaml.cs">
+      <DependentUpon>AlgorithmItem.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Benchmark\ComputeDeviceItem\AlgorithmItemSpeedsConverter.cs" />
+    <Compile Include="Views\Benchmark\ComputeDeviceItem\AlgorithmItemStatusStyleConverter.cs" />
+    <Compile Include="Views\Benchmark\ComputeDeviceItem\ComputeDeviceItem.xaml.cs">
+      <DependentUpon>ComputeDeviceItem.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ChooseLanguageWindow.xaml.cs">
+      <DependentUpon>ChooseLanguageWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Common\WorkernamePanel.xaml.cs">
+      <DependentUpon>WorkernamePanel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Common\NHBase\BaseDialogWindow.cs" />
+    <Compile Include="Views\Common\NHBase\BaseDialogWindow.Sizing.cs" />
+    <Compile Include="Views\Common\NHBase\NHMMainWindow.cs" />
+    <Compile Include="Views\Common\NHBase\Utils\NativeUtils.cs" />
+    <Compile Include="Views\Common\NHBase\Utils\SystemHelper.cs" />
+    <Compile Include="Views\Common\ViewStatsOnline.xaml.cs">
+      <DependentUpon>ViewStatsOnline.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Common\WindowUtils.cs" />
+    <Compile Include="Views\Dashboard\Dashboard.xaml.cs">
+      <DependentUpon>Dashboard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Devices\ComputeDeviceItem.xaml.cs">
+      <DependentUpon>ComputeDeviceItem.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Devices\Devices.xaml.cs">
+      <DependentUpon>Devices.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\EulaWindowFirstLong.xaml.cs">
+      <DependentUpon>EulaWindowFirstLong.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Help\Help.xaml.cs">
+      <DependentUpon>Help.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\LoginWindow.xaml.cs">
+      <DependentUpon>LoginWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\NHMDialogWindow.xaml.cs">
+      <DependentUpon>NHMDialogWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Notifications\Converters\NewVisibilityConverter.cs" />
+    <Compile Include="Views\Notifications\Notifications.xaml.cs">
+      <DependentUpon>Notifications.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Notifications\NotificationItem.xaml.cs">
+      <DependentUpon>NotificationItem.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Plugins\PluginItem\Converters\CompatibleVisibilityConverter.cs" />
+    <Compile Include="Views\Plugins\PluginItem\Converters\PluginItemButtonConverters.cs" />
+    <Compile Include="Views\Plugins\PluginItem\Converters\SupportedDeviceAlgorithmsConverter.cs" />
+    <Compile Include="Views\Plugins\PluginItem\Converters\SupportedDevicesConverter.cs" />
+    <Compile Include="Views\Plugins\PluginItem\PluginIcon.xaml.cs">
+      <DependentUpon>PluginIcon.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Plugins\PluginItem\PluginItem.xaml.cs">
+      <DependentUpon>PluginItem.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Plugins\Plugins.xaml.cs">
+      <DependentUpon>Plugins.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Settings\Settings.xaml.cs">
+      <DependentUpon>Settings.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Settings\SettingsAdvanced.xaml.cs">
+      <DependentUpon>SettingsAdvanced.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Settings\SettingsCheckBoxItem.xaml.cs">
+      <DependentUpon>SettingsCheckBoxItem.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Settings\SettingsGeneral.xaml.cs">
+      <DependentUpon>SettingsGeneral.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\TDPSettings\TDPComputeDeviceItem.xaml.cs">
+      <DependentUpon>TDPComputeDeviceItem.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\TDPSettings\TDPSettings.xaml.cs">
+      <DependentUpon>TDPSettings.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\TDPSettings\TDPSettingsWindow.xaml.cs">
+      <DependentUpon>TDPSettingsWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\TemporaryStartupLoadingControl.xaml.cs">
+      <DependentUpon>TemporaryStartupLoadingControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="_DESIGN_DEVELOP\Colors\Colors.xaml.cs">
+      <DependentUpon>Colors.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="_DESIGN_DEVELOP\Components\Components.xaml.cs">
+      <DependentUpon>Components.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="_DESIGN_DEVELOP\Components\ThemeSwitch.xaml.cs">
+      <DependentUpon>ThemeSwitch.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="_DESIGN_DEVELOP\__DESIGN_DEVELOP.xaml.cs">
+      <DependentUpon>__DESIGN_DEVELOP.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Resources\Xaml\Brushes.xaml">
       <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Components\BenchmarkOptions.resx">
-      <DependentUpon>BenchmarkOptions.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Components\DevicesListViewBenchmarkControl.resx">
-      <DependentUpon>DevicesListViewBenchmarkControl.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Components\DevicesListViewSpeedControl.resx">
-      <DependentUpon>DevicesListViewSpeedControl.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Components\Field.resx">
-      <DependentUpon>Field.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Components\PluginInfoDetails.resx">
-      <DependentUpon>PluginInfoDetails.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Components\PluginInfoItem.resx">
-      <DependentUpon>PluginInfoItem.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Components\PluginInfoItemRow.resx">
-      <DependentUpon>PluginInfoItemRow.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Components\StartupLoadingControl.resx">
-      <DependentUpon>StartupLoadingControl.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\EnterBTCDialogSwitch.resx">
-      <DependentUpon>EnterBTCDialogSwitch.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormEula.resx">
-      <DependentUpon>FormEula.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Form_Benchmark.resx">
-      <DependentUpon>Form_Benchmark.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Form_ChooseLanguage.resx">
-      <DependentUpon>Form_ChooseLanguage.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Form_3rdParty_TOS.resx">
-      <DependentUpon>Form_3rdParty_TOS.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Form_ChooseUpdate.resx">
-      <DependentUpon>Form_ChooseUpdate.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Form_Main.resx">
-      <DependentUpon>Form_Main.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Form_MinerPlugins.resx">
-      <DependentUpon>Form_MinerPlugins.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Form_Settings.resx">
-      <DependentUpon>Form_Settings.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\Form_TDPSettings.resx">
-      <DependentUpon>Form_TDPSettings.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\MinerFileNotFoundDialog.resx">
-      <DependentUpon>MinerFileNotFoundDialog.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\LoginForm.resx">
-      <DependentUpon>LoginForm.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Colors\Colors.xaml">
       <SubType>Designer</SubType>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <None Include="OnGPUsLost.bat">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="packages.config">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Colors\Dark.xaml">
       <SubType>Designer</SubType>
-    </None>
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Colors\Light.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\Buttons.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\CheckBoxes.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\ComboBoxes.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\Controls.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\InvisibleToggleButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\MenuDropdownButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\ProgressBars.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\ScrollBar.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\SpinCirclePath.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\StartStopButtonDark.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\StartStopButtonLight.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\Switches.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\TabButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\TextBoxes.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Controls\ToolTip.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Fonts\Fonts.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Fonts\Spacing.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Fonts\Typography.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Icons\Icons.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Icons\LoginCircleLogoDark.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Icons\LoginCircleLogoLight.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Icons\MiningAxeIcon.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Icons\MiningAxeIconDark.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Icons\MoonCircleDark.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Icons\NHMLogoDark.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Icons\NHMLogoLight.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Icons\SunCircleLight.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\NHMLogos.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Shadows.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Xaml\Tooltips.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Benchmark\ComputeDeviceItem\AlgorithmSettings.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Benchmark\ComputeDeviceItem\ComputeDeviceItemHeader.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Common\CustomDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Common\EnterWalletDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Common\EnterWorkernameDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\EulaWindowSecondShort.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Benchmark\Benchmarks.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Benchmark\ComputeDeviceItem\AlgorithmItem.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Benchmark\ComputeDeviceItem\ComputeDeviceItem.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ChooseLanguageWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Common\WorkernamePanel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Common\NHBase\NHBaseWindowStyles.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Common\NHBase\NHMMainWindowStyle.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Common\Styles.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Common\ViewStatsOnline.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Dashboard\Dashboard.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Devices\ComputeDeviceItem.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Devices\Devices.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\EulaWindowFirstLong.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Help\Help.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\LoginWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\MainWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\NHMDialogWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Notifications\Notifications.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Notifications\NotificationItem.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Plugins\PluginItem\PluginIcon.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Plugins\PluginItem\PluginItem.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Plugins\Plugins.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Settings\Settings.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Settings\SettingsAdvanced.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Settings\SettingsCheckBoxItem.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Settings\SettingsGeneral.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\TDPSettings\TDPComputeDeviceItem.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\TDPSettings\TDPSettings.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\TDPSettings\TDPSettingsWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\TemporaryStartupLoadingControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="_DESIGN_DEVELOP\Colors\Colors.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="_DESIGN_DEVELOP\Components\Components.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="_DESIGN_DEVELOP\Components\ThemeSwitch.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="_DESIGN_DEVELOP\__DESIGN_DEVELOP.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -337,40 +547,52 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <None Include="translations.json" />
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="README.md" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-R.ttf" />
+    <Resource Include="Resources\Fonts\FontAwesome\fa-solid-900.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-B.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-BI.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-C.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-L.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-LI.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-M.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-MI.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-RI.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\Ubuntu-Th.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\UbuntuMono-B.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\UbuntuMono-BI.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\UbuntuMono-R.ttf" />
+    <Resource Include="Resources\Fonts\Ubuntu\UbuntuMono-RI.ttf" />
+    <None Include="translations.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
+    <Resource Include="Resources\logo.ico" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\3rdparty\MessageBoxManager\MessageBoxManager.csproj">
-      <Project>{0e9d874e-5354-465e-9ec3-f7a35c268a8a}</Project>
-      <Name>MessageBoxManager</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Miners\Ethlargement\Ethlargement.csproj">
-      <Project>{5f994ad1-02a2-4a00-90ca-5cd5943fd24a}</Project>
-      <Name>Ethlargement</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\NHM.DeviceMonitoring\NHM.DeviceMonitoring.csproj">
-      <Project>{9c50c5cf-4f75-4533-80aa-1ea23b05377e}</Project>
-      <Name>NHM.DeviceMonitoring</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\NHM.MinersDownloader\NHM.MinersDownloader.csproj">
-      <Project>{6bdc0b57-e7d9-43e1-8534-55ae8a1b12ed}</Project>
-      <Name>NHM.MinersDownloader</Name>
+    <ProjectReference Include="..\Miners\MinerPluginToolkitV1\MinerPluginToolkitV1.csproj">
+      <Project>{847398E0-2E35-4A85-8C70-0B40AA172ABA}</Project>
+      <Name>MinerPluginToolkitV1</Name>
     </ProjectReference>
     <ProjectReference Include="..\NHM.Common\NHM.Common.csproj">
       <Project>{279a5b29-3799-43fa-9734-e462e046ba81}</Project>
       <Name>NHM.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\NHM.DeviceMonitoring\NHM.DeviceMonitoring.csproj">
+      <Project>{9c50c5cf-4f75-4533-80aa-1ea23b05377e}</Project>
+      <Name>NHM.DeviceMonitoring</Name>
     </ProjectReference>
     <ProjectReference Include="..\NHMCore\NHMCore.csproj">
       <Project>{43dcaf38-d0c4-4335-983d-650f78461eb2}</Project>
@@ -379,55 +601,4 @@
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-  </Target>
-  <PropertyGroup>
-    <PostBuildEvent>REM copy translations. Always copy and replace file
-copy /Y "$(ProjectDir)\translations.json" "$(SolutionDir)$(Configuration)\translations.json"
-REM device detection test script
-copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_test.bat" "$(SolutionDir)$(Configuration)\device_detection_test.bat"
-
-REM copy device detection dll's. Copy only if files don't exist
-If NOT exist "$(SolutionDir)$(Configuration)\cpuid.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\cpuid.dll" "$(SolutionDir)$(Configuration)\cpuid.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\cuda_device_detection.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\cuda_device_detection.dll" "$(SolutionDir)$(Configuration)\cuda_device_detection.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\msvcp120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\msvcp120.dll" "$(SolutionDir)$(Configuration)\msvcp120.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\msvcr120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\msvcr120.dll" "$(SolutionDir)$(Configuration)\msvcr120.dll"
-REM OpenCL.dll inside a separate folder
-If NOT exist "$(SolutionDir)$(Configuration)\OpenCL\" mkdir "$(SolutionDir)$(Configuration)\OpenCL\"
-if NOT exist "$(SolutionDir)$(Configuration)\OpenCL\OpenCL.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\OpenCL\OpenCL.dll" "$(SolutionDir)$(Configuration)\OpenCL\OpenCL.dll"
-if NOT exist "$(SolutionDir)$(Configuration)\OpenCL\README.md" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\OpenCL\README.md" "$(SolutionDir)$(Configuration)\OpenCL\README.md"
-If NOT exist "$(SolutionDir)$(Configuration)\opencl_device_detection.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\opencl_device_detection.dll" "$(SolutionDir)$(Configuration)\opencl_device_detection.dll"
-REM NVIDIA inside a separate folder
-If NOT exist "$(SolutionDir)$(Configuration)\NVIDIA\" mkdir "$(SolutionDir)$(Configuration)\NVIDIA\"
-if NOT exist "$(SolutionDir)$(Configuration)\NVIDIA\nvml.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\NVIDIA\nvml.dll" "$(SolutionDir)$(Configuration)\NVIDIA\nvml.dll"
-if NOT exist "$(SolutionDir)$(Configuration)\NVIDIA\README.md" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\NVIDIA\README.md" "$(SolutionDir)$(Configuration)\NVIDIA\README.md"
-if NOT exist "$(SolutionDir)$(Configuration)\NVIDIA\license.txt" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\NVIDIA\license.txt" "$(SolutionDir)$(Configuration)\NVIDIA\license.txt"
-
-
-REM commons dll's for downloaded miners. Copy only if files don't exist. Remove this after plugin system fully replaces integrated miners
-REM create directory
-If NOT exist "$(SolutionDir)$(Configuration)\common\" mkdir "$(SolutionDir)$(Configuration)\common\"
-REM copy over dll's
-If NOT exist "$(SolutionDir)$(Configuration)\common\cudart32_80.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\cudart32_80.dll" "$(SolutionDir)$(Configuration)\common\cudart32_80.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\cudart64_80.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\cudart64_80.dll" "$(SolutionDir)$(Configuration)\common\cudart64_80.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\cudart64_91.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\cudart64_91.dll" "$(SolutionDir)$(Configuration)\common\cudart64_91.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\libcurl.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\libcurl.dll" "$(SolutionDir)$(Configuration)\common\libcurl.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\msvcp120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcp120.dll" "$(SolutionDir)$(Configuration)\common\msvcp120.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\msvcp140.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcp140.dll" "$(SolutionDir)$(Configuration)\common\msvcp140.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\msvcr110.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcr110.dll" "$(SolutionDir)$(Configuration)\common\msvcr110.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\msvcr120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcr120.dll" "$(SolutionDir)$(Configuration)\common\msvcr120.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\OpenCL.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\OpenCL.dll" "$(SolutionDir)$(Configuration)\common\OpenCL.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\vcruntime140.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\vcruntime140.dll" "$(SolutionDir)$(Configuration)\common\vcruntime140.dll"
-</PostBuildEvent>
-  </PropertyGroup>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
 </Project>

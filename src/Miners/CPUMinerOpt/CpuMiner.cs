@@ -19,12 +19,9 @@ namespace CpuMinerOpt
         private int _apiPort;
         private double DevFee = 0d;
 
-        public CpuMiner(string uuid, Func<AlgorithmType, string> algorithmName) : base(uuid)
+        public CpuMiner(string uuid) : base(uuid)
         {
-            _algorithmName = algorithmName;
         }
-
-        protected Func<AlgorithmType, string> _algorithmName;
 
         public async override Task<ApiData> GetMinerStatsDataAsync()
         {
@@ -36,7 +33,6 @@ namespace CpuMinerOpt
 
             if (!string.IsNullOrEmpty(summaryApiResult))
             {
-                // TODO return empty
                 try
                 {
                     var summaryOptvals = summaryApiResult.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
@@ -71,7 +67,7 @@ namespace CpuMinerOpt
 
             var benchmarkTime = MinerPluginToolkitV1.Configs.MinerBenchmarkTimeSettings.ParseBenchmarkTime(new List<int> { 20, 60, 120 }, MinerBenchmarkTimeSettings, _miningPairs, benchmarkType); // in seconds
 
-            var algo = _algorithmName(_algorithmType);
+            var algo = PluginSupportedAlgorithms.AlgorithmName(_algorithmType);
             var commandLine = $"--algo={algo} --benchmark --time-limit {benchmarkTime} {_extraLaunchParameters}";
 
             var binPathBinCwdPair = GetBinAndCwdPaths();
@@ -79,7 +75,6 @@ namespace CpuMinerOpt
             var binCwd = binPathBinCwdPair.Item2;
             Logger.Info(_logGroup, $"Benchmarking started with command: {commandLine}");
             var bp = new BenchmarkProcess(binPath, binCwd, commandLine, GetEnvironmentVariables());
-            // TODO benchmark process add after benchmark
 
             double benchHashesSum = 0;
             double benchHashResult = 0;
@@ -138,7 +133,7 @@ namespace CpuMinerOpt
             _apiPort = GetAvaliablePort();
             // instant non blocking
             var url = StratumServiceHelpers.GetLocationUrl(_algorithmType, _miningLocation, NhmConectionType.STRATUM_TCP);
-            var algo = _algorithmName(_algorithmType);
+            var algo = PluginSupportedAlgorithms.AlgorithmName(_algorithmType);
 
             var commandLine = $"--algo={algo} --url={url} --user={username} --api-bind={_apiPort} {_extraLaunchParameters}";
             return commandLine;
@@ -157,7 +152,6 @@ namespace CpuMinerOpt
         //public void AfterStartMining()
         //{
         //    int pid = _miningProcess?.Id  ?? - 1;
-        //    // TODO C# can have this shorter
         //    if (_affinityMask != 0 && pid != -1)
         //    {
         //        var okMsg = ProcessHelpers.AdjustAffinity(pid, _affinityMask);

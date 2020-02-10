@@ -18,15 +18,22 @@ namespace NHMCore.Switching
         private const string Tag = "NHSMAData";
         private static string CachedFile => Paths.InternalsPath("cached_sma.json");
 
-        public static bool Initialized { get; private set; }
         /// <summary>
         /// True iff there has been at least one SMA update
         /// </summary>
-#if FORCE_MINING
-        public static bool HasData { get => true; private set { } }
-#else
-        public static bool HasData { get; private set; }
-#endif
+        public static bool _hasData = false;
+        public static bool HasData
+        {
+            get
+            {
+                if (BuildOptions.FORCE_MINING || BuildOptions.FORCE_PROFITABLE) return true;
+                return _hasData;
+            }
+            private set
+            {
+                _hasData = value;
+            }
+        }
 
         // private static Dictionary<AlgorithmType, List<double>> _recentPaying;
 
@@ -35,8 +42,7 @@ namespace NHMCore.Switching
         // Global list of stable algorithms, should be accessed with a lock
         private static HashSet<AlgorithmType> _stableAlgorithms;
 
-        // Public for tests only
-        public static void Initialize()
+        static NHSmaData()
         {
             _currentPayingRates = new Dictionary<AlgorithmType, double>();
             _stableAlgorithms = new HashSet<AlgorithmType>();
@@ -53,20 +59,14 @@ namespace NHMCore.Switching
                     if (cacheDict?.TryGetValue(algo, out paying) ?? false)
                         HasData = true;
 
-#if FORCE_MINING
-                    paying = 10000;
-#endif
+                    if (BuildOptions.FORCE_MINING || BuildOptions.FORCE_PROFITABLE)
+                    {
+                        paying = 10000;
+                    }
 
                     _currentPayingRates[algo] = paying;
                 }
             }
-
-            Initialized = true;
-        }
-
-        public static void InitializeIfNeeded()
-        {
-            if (!Initialized) Initialize();
         }
 
 #region Update Methods
@@ -78,7 +78,6 @@ namespace NHMCore.Switching
         /// <param name="newSma">Algorithm/profit dictionary with new values</param>
         public static void UpdateSmaPaying(Dictionary<AlgorithmType, double> newSma)
         {
-            CheckInit();
             lock (_currentPayingRates)
             {
                 foreach (var algo in newSma.Keys)
@@ -86,14 +85,14 @@ namespace NHMCore.Switching
                     if (_currentPayingRates.ContainsKey(algo))
                     {
                         _currentPayingRates[algo] = newSma[algo];
-#if FILLSMA
-                        var paying = 1;
-                        _currentPayingRates[algo] = paying;
-#endif
+                        if (BuildOptions.FORCE_MINING || BuildOptions.FORCE_PROFITABLE)
+                        {
+                            _currentPayingRates[algo] = 1000;
+                        }
                     }
                 }
 
-                if (ConfigManager.GeneralConfig.UseSmaCache)
+                if (MiscSettings.Instance.UseSmaCache)
                 {
                     // Cache while in lock so file is not accessed on multiple threads
                     var isFileSaved = InternalConfigs.WriteFileSettings(CachedFile, newSma);
@@ -109,7 +108,6 @@ namespace NHMCore.Switching
         /// </summary>
         internal static void UpdatePayingForAlgo(AlgorithmType algo, double paying)
         {
-            CheckInit();
             lock (_currentPayingRates)
             {
                 if (!_currentPayingRates.ContainsKey(algo))
@@ -117,10 +115,10 @@ namespace NHMCore.Switching
                 _currentPayingRates[algo] = paying;
             }
 
-#if FILLSMA
-            paying = 1;
-            _currentPayingRates[algo] = paying;
-#endif
+            if (BuildOptions.FORCE_MINING || BuildOptions.FORCE_PROFITABLE)
+            {
+                _currentPayingRates[algo] = 1000;
+            }
 
             HasData = true;
         }
@@ -131,7 +129,6 @@ namespace NHMCore.Switching
         /// <param name="algorithms">Algorithms that are stable</param>
         public static void UpdateStableAlgorithms(IEnumerable<AlgorithmType> algorithms)
         {
-            CheckInit();
             var sb = new StringBuilder();
             sb.AppendLine("Updating stable algorithms");
             var hasChange = false;
@@ -176,7 +173,6 @@ namespace NHMCore.Switching
         /// <returns>True iff we know about this algo</returns>
         public static bool TryGetPaying(AlgorithmType algo, out double paying)
         {
-            CheckInit();
             lock (_currentPayingRates)
             {
                 return _currentPayingRates.TryGetValue(algo, out paying);
@@ -185,7 +181,6 @@ namespace NHMCore.Switching
 
         public static bool IsAlgorithmStable(AlgorithmType algo)
         {
-            CheckInit();
             lock (_stableAlgorithms)
             {
                 return _stableAlgorithms.Contains(algo);
@@ -199,7 +194,6 @@ namespace NHMCore.Switching
         /// <returns>Filtered Algorithm/double map</returns>
         public static Dictionary<AlgorithmType, double> FilteredCurrentProfits(bool stable)
         {
-            CheckInit();
             var dict = new Dictionary<AlgorithmType, double>();
 
             lock (_currentPayingRates)
@@ -217,9 +211,8 @@ namespace NHMCore.Switching
         /// <summary>
         /// Copy and return SMA profits 
         /// </summary>
-        public static Dictionary<AlgorithmType, double> CurrentProfitsSnapshot()
+        public static Dictionary<AlgorithmType, double> CurrentPayingRatesSnapshot()
         {
-            CheckInit();
             var dict = new Dictionary<AlgorithmType, double>();
 
             lock (_currentPayingRates)
@@ -247,16 +240,6 @@ namespace NHMCore.Switching
 
             return hasData;
         }
-
 #endregion
-
-        /// <summary>
-        /// Helper to ensure initialization
-        /// </summary>
-        private static void CheckInit()
-        {
-            if (!Initialized)
-                throw new InvalidOperationException("NHSmaData cannot be used before initialization");
-        }
     }
 }

@@ -13,34 +13,36 @@ using System.Threading.Tasks;
 
 namespace Phoenix
 {
-    public class PhoenixPlugin : PluginBase, IDevicesCrossReference
+    public partial class PhoenixPlugin : PluginBase, IDevicesCrossReference
     {
         public PhoenixPlugin()
         {
+            // mandatory init
+            InitInsideConstuctorPluginSupportedAlgorithmsSettings();
             // set default internal settings
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
             MinerSystemEnvironmentVariables = PluginInternalSettings.MinerSystemEnvironmentVariables;
             // https://bitcointalk.org/index.php?topic=2647654.0
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
-                BinVersion = "4.7c",
-                ExePath = new List<string> { "PhoenixMiner_4.7c_Windows", "PhoenixMiner.exe" },
+                BinVersion = "4.9c",
+                ExePath = new List<string> { "PhoenixMiner_4.9c_Windows", "PhoenixMiner.exe" },
                 Urls = new List<string>
                 {
-                    "https://github.com/nicehash/MinerDownloads/releases/download/1.9.1.12b/PhoenixMiner_4.7c_Windows.7z",
-                    "https://mega.nz/#F!2VskDJrI!lsQsz1CdDe8x5cH3L8QaBw?fcFnUIhD" // original
+                    "https://github.com/nicehash/MinerDownloads/releases/download/1.9.2.16plus/PhoenixMiner_4.9c_Windows.zip",
+                    "https://mega.nz/#F!2VskDJrI!lsQsz1CdDe8x5cH3L8QaBw?KZ0TxQbb" // original
                 }
             };
             PluginMetaInfo = new PluginMetaInfo
             {
                 PluginDescription = "Phoenix Miner is fast Ethash miner that supports both AMD and Nvidia cards(including in mixed mining rigs).",
-                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+                SupportedDevicesAlgorithms = SupportedDevicesAlgorithmsDict()
             };
         }
 
         public override string PluginUUID => "f5d4a470-e360-11e9-a914-497feefbdfc8";
 
-        public override Version Version => new Version(3, 3);
+        public override Version Version => new Version(5, 2);
         public override string Name => "Phoenix";
 
         public override string Author => "info@nicehash.com";
@@ -73,7 +75,7 @@ namespace Phoenix
 
             foreach (var gpu in supportedGpus)
             {
-                var algorithms = GetSupportedAlgorithms(gpu).ToList();
+                var algorithms = GetSupportedAlgorithmsForDevice(gpu as BaseDevice);
                 if (algorithms.Count > 0) supported.Add(gpu as BaseDevice, algorithms);
             }
 
@@ -92,13 +94,6 @@ namespace Phoenix
             return isSupported && isDriverSupported;
         }
 
-        private IEnumerable<Algorithm> GetSupportedAlgorithms(IGpuDevice gpu)
-        {
-            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsGPU(PluginUUID);
-            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
-            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
-            return filteredAlgorithms;
-        }
         public override bool CanGroup(MiningPair a, MiningPair b)
         {
             var isSameDeviceType = a.Device.DeviceType == b.Device.DeviceType;
@@ -114,8 +109,7 @@ namespace Phoenix
         public async Task DevicesCrossReference(IEnumerable<BaseDevice> devices)
         {
             if (_mappedIDs.Count == 0) return;
-            // TODO will block
-
+            
             var containsAMD = devices.Any(dev => dev.DeviceType == DeviceType.AMD);
             var containsNVIDIA = devices.Any(dev => dev.DeviceType == DeviceType.NVIDIA);
 
@@ -123,11 +117,11 @@ namespace Phoenix
 
             if (containsAMD)
             {
-                await MapDeviceCrossRefference(devices, minerBinPath, "-list -amd");
+                await MapDeviceCrossRefference(devices, minerBinPath, "-list -amd -gbase 0");
             }
             if (containsNVIDIA)
             {
-                await MapDeviceCrossRefference(devices, minerBinPath, "-list -nvidia");
+                await MapDeviceCrossRefference(devices, minerBinPath, "-list -nvidia -gbase 0");
             }
 
         }

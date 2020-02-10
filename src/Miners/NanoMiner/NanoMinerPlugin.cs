@@ -12,32 +12,34 @@ using System.Threading.Tasks;
 
 namespace NanoMiner
 {
-    public class NanoMinerPlugin : PluginBase, IDevicesCrossReference
+    public partial class NanoMinerPlugin : PluginBase, IDevicesCrossReference
     {
         public NanoMinerPlugin()
         {
+            // mandatory init
+            InitInsideConstuctorPluginSupportedAlgorithmsSettings();
             // set default internal settings
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
             // https://bitcointalk.org/index.php?topic=5089248.0 | https://github.com/nanopool/nanominer/releases
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
-                BinVersion = "v1.6.0",
-                ExePath = new List<string> { "nanominer-windows-1.6.0", "nanominer.exe" },
+                BinVersion = "v1.7.3",
+                ExePath = new List<string> { "nanominer-windows-1.7.3", "nanominer.exe" },
                 Urls = new List<string>
                 {
-                    "https://github.com/nanopool/nanominer/releases/download/v1.6.0/nanominer-windows-1.6.0.zip", // original
+                    "https://github.com/nanopool/nanominer/releases/download/v1.7.3/nanominer-windows-1.7.3.zip", // original
                 }
             };
             PluginMetaInfo = new PluginMetaInfo
             {
                 PluginDescription = "Nanominer is a versatile tool for mining cryptocurrencies which are based on Ethash, Ubqhash, Cuckaroo29, CryptoNight (v6, v7, v8, R, ReverseWaltz) and RandomHash (PascalCoin) algorithms.",
-                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+                SupportedDevicesAlgorithms = SupportedDevicesAlgorithmsDict()
             };
         }
 
         public override string PluginUUID => "a841b4b0-ae17-11e9-8e4e-bb1e2c6e76b4";
 
-        public override Version Version => new Version(3, 2);
+        public override Version Version => new Version(5, 2);
 
         public override string Name => "NanoMiner";
 
@@ -65,7 +67,7 @@ namespace NanoMiner
 
             foreach (var gpu in supportedGpus)
             {
-                var algorithms = GetSupportedAlgorithms(gpu);
+                var algorithms = GetSupportedAlgorithmsForDevice(gpu as BaseDevice);
                 if (algorithms.Count > 0) supported.Add(gpu as BaseDevice, algorithms);
             }
 
@@ -84,17 +86,9 @@ namespace NanoMiner
             return isSupported && isDriverSupported;
         }
 
-        List<Algorithm> GetSupportedAlgorithms(IGpuDevice gpu)
-        {
-            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsGPU(PluginUUID).ToList();
-            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
-            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
-            return filteredAlgorithms;
-        }
-
         protected override MinerBase CreateMinerBase()
         {
-            return new NanoMiner(PluginUUID, _mappedIDs, PluginSupportedAlgorithms.AlgorithmName, PluginSupportedAlgorithms.DevFee);
+            return new NanoMiner(PluginUUID, _mappedIDs);
         }
 
         public async Task DevicesCrossReference(IEnumerable<BaseDevice> devices)
@@ -116,7 +110,7 @@ namespace NanoMiner
         public override IEnumerable<string> CheckBinaryPackageMissingFiles()
         {
             var pluginRootBinsPath = GetBinAndCwdPaths().Item2;
-            return BinaryPackageMissingFilesCheckerHelpers.ReturnMissingFiles(pluginRootBinsPath, new List<string> { "nvrtc64_100_0.dll", "nvrtc-builtins64_100.dll", "service.dll", "nanominer.exe" });
+            return BinaryPackageMissingFilesCheckerHelpers.ReturnMissingFiles(pluginRootBinsPath, new List<string> { "service.dll", "nanominer.exe" });
         }
 
         public override bool ShouldReBenchmarkAlgorithmOnDevice(BaseDevice device, Version benchmarkedPluginVersion, params AlgorithmType[] ids)

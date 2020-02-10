@@ -1,17 +1,26 @@
-﻿using NHMCore.Configs;
+﻿using NHM.Common;
+using NHMCore.Configs;
+using NHMCore.Notifications;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace NHMCore
 {
-    public static class StratumService
+    public class StratumService : NotifyChangedBase
     {
-        public static string SelectedServiceLocation => MiningLocations[_serviceLocation];
-        private static string _lastSelectedServiceLocation = "";
+        public static StratumService Instance { get; } = new StratumService();
 
-        private static bool _callResume = false;
+        private StratumService() { }
 
-        public static int _serviceLocation = 0;
-        public static int ServiceLocation
+        public string SelectedServiceLocation => MiningLocations[_serviceLocation];
+        public string SelectedFallbackServiceLocation { get; private set; } = null;
+        public bool SelectedServiceLocationOperational { get; private set; } = true;
+        public bool EU_ServiceLocationOperational { get; private set; } = true;
+        public bool USA_ServiceLocationOperational { get; private set; } = true;
+        public bool ServiceLocationsNotOperational { get; private set; } = false;
+
+        public int _serviceLocation = 0;
+        public int ServiceLocation
         {
             get => _serviceLocation;
             set
@@ -23,7 +32,8 @@ namespace NHMCore
                     // service location is different and changed execute potential actions
                     ConfigManager.GeneralConfigFileCommit();
                 }
-                _lastSelectedServiceLocation = SelectedServiceLocation;
+                OnPropertyChanged(nameof(ServiceLocation));
+                OnPropertyChanged(nameof(SelectedServiceLocation));
             }
         }
 
@@ -41,13 +51,15 @@ namespace NHMCore
             public bool Enabled { get; set; } = true;
         }
 
-        public static void SetEnabled(bool eu, bool usa)
+        public void SetEnabled(bool eu, bool usa)
         {
+            // backup old states
             var oldStates = new Dictionary<string, bool>();
             foreach (var kvp in _miningLocations)
             {
                 oldStates[kvp.Key] = kvp.Value.Enabled;
             }
+            // set operational states
             foreach (var key in _miningLocationsEU)
             {
                 _miningLocations[key].Enabled = eu;
@@ -56,6 +68,16 @@ namespace NHMCore
             {
                 _miningLocations[key].Enabled = usa;
             }
+            // check 
+            EU_ServiceLocationOperational = eu;
+            USA_ServiceLocationOperational = usa;
+            ServiceLocationsNotOperational = !eu && !usa;
+            SelectedServiceLocationOperational = _miningLocations[SelectedServiceLocation].Enabled;
+            OnPropertyChanged(nameof(EU_ServiceLocationOperational));
+            OnPropertyChanged(nameof(USA_ServiceLocationOperational));
+            OnPropertyChanged(nameof(ServiceLocationsNotOperational));
+            OnPropertyChanged(nameof(SelectedServiceLocationOperational));
+
             // determine if there is a change
             var hasChange = false;
             foreach (var kvp in oldStates)
@@ -69,42 +91,34 @@ namespace NHMCore
             }
             if (hasChange)
             {
-                // TODO update GUI
-                var lastSelectedServiceLocation = _lastSelectedServiceLocation;
-                // TODO check if we must restart mining
-                var mustRestart = _miningLocations[SelectedServiceLocation].Enabled == false || _callResume;
-                _lastSelectedServiceLocation = SelectedServiceLocation;
-                if (mustRestart)
+                if (SelectedServiceLocationOperational)
                 {
-                    var canSwitchMarket = false;
-                    // take first market to switch
-                    foreach (var key in MiningLocations)
+                    var marketNotifications = NotificationsManager.Instance.Notifications.Where(notif => notif.Group == NotificationsGroup.Market);
+                    foreach (var marketNotif in marketNotifications)
                     {
-                        if (_miningLocations[key].Enabled)
-                        {
-                            canSwitchMarket = true;
-                            _serviceLocation = _miningLocations[key].Index;
-                            break;
-                        }
+                        NotificationsManager.Instance.RemoveNotificationFromList(marketNotif);
                     }
-                    if (_miningLocations[lastSelectedServiceLocation].Enabled)
-                    {
-                        canSwitchMarket = true;
-                        _serviceLocation = _miningLocations[lastSelectedServiceLocation].Index;
-                    }
-                    if (canSwitchMarket)
-                    {
-                        // restart or resume mining
-                        ApplicationStateManager.ResumeMiners();
-                    }
-                    else
-                    {
-                        _callResume = true;
-                        ApplicationStateManager.PauseMiners();
-                        // TODO notify GUI 
-                    }
+                    OnPropertyChanged(nameof(SelectedServiceLocation));
                 }
-                
+                else if (EU_ServiceLocationOperational)
+                {
+                    AvailableNotifications.CreateUnavailablePrimaryMarketLocationInfo();
+                    SelectedFallbackServiceLocation = _miningLocationsEU.FirstOrDefault();
+                    OnPropertyChanged(nameof(SelectedFallbackServiceLocation));
+                }
+                else if (USA_ServiceLocationOperational)
+                {
+                    AvailableNotifications.CreateUnavailablePrimaryMarketLocationInfo();
+                    SelectedFallbackServiceLocation = _miningLocationsUSA.FirstOrDefault();
+                    OnPropertyChanged(nameof(SelectedFallbackServiceLocation));
+                }
+                else
+                {
+                    // pause mining
+                    AvailableNotifications.CreateUnavailableAllMarketsLocationInfo();
+                    SelectedFallbackServiceLocation = null;
+                    OnPropertyChanged(nameof(SelectedFallbackServiceLocation));
+                }
             }
         }
 

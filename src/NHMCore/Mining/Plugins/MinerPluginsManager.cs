@@ -4,7 +4,9 @@ using MinerPluginToolkitV1;
 using Newtonsoft.Json;
 using NHM.Common;
 using NHM.MinersDownloader;
+using NHMCore.ApplicationState;
 using NHMCore.Configs;
+using NHMCore.Notifications;
 using NHMCore.Utils;
 using System;
 using System.Collections.Concurrent;
@@ -49,6 +51,9 @@ namespace NHMCore.Mining.Plugins
 #endif
 #if INTEGRATE_XmrStak_PLUGIN
                 new XmrStak.XmrStakPlugin(),
+#endif
+#if INTEGRATE_XmrStakRx_PLUGIN
+                new XmrStakRx.XmrStakRxPlugin(),
 #endif
 #if INTEGRATE_CpuMinerOpt_PLUGIN
                 new CpuMinerOpt.CPUMinerPlugin(),
@@ -97,8 +102,8 @@ namespace NHMCore.Mining.Plugins
 #if INTEGRATE_ZEnemy_PLUGIN
                 new ZEnemy.ZEnemyPlugin(),
 #endif
-#if INTEGRATE_LolMinerBeam_PLUGIN
-                new LolMinerBeam.LolMinerBeamPlugin(),
+#if INTEGRATE_LolMiner_PLUGIN
+                new LolMiner.LolMinerPlugin(),
 #endif
 //#if INTEGRATE_SRBMiner_PLUGIN
 //                new SRBMiner.SRBMinerPlugin(),
@@ -129,11 +134,11 @@ namespace NHMCore.Mining.Plugins
         private static List<PluginPackageInfo> OnlinePlugins { get; set; }
         private static Dictionary<string, PluginPackageInfoCR> PluginsPackagesInfosCRs { get; set; } = new Dictionary<string, PluginPackageInfoCR>();
 
-        public static PluginPackageInfoCR GetPluginPackageInfoCR(string pluginUUID)
-        {
-            if (PluginsPackagesInfosCRs.ContainsKey(pluginUUID)) return PluginsPackagesInfosCRs[pluginUUID];
-            return null;
-        }
+        //public static PluginPackageInfoCR GetPluginPackageInfoCR(string pluginUUID)
+        //{
+        //    if (PluginsPackagesInfosCRs.ContainsKey(pluginUUID)) return PluginsPackagesInfosCRs[pluginUUID];
+        //    return null;
+        //}
 
         public static IEnumerable<PluginPackageInfoCR> RankedPlugins
         {
@@ -204,11 +209,36 @@ namespace NHMCore.Mining.Plugins
             }
         }
 
+        public static void CheckAndDeleteNewVersion3Bins()
+        {
+            try
+            {
+                if (ConfigManager.IsVersionChangedToMajor3)
+                {
+                    string minerPluginsPath = Paths.MinerPluginsPath();
+                    var installedExternalPackages = Directory.GetDirectories(minerPluginsPath);
+                    foreach (var installedPath in installedExternalPackages)
+                    {
+                        try
+                        {
+                            Directory.Delete(Path.Combine(installedPath, "bins"), true);
+                        }
+                        catch (Exception e)
+                        {
+                            Logger.Error("CheckAndDeleteNewVersion3Bins", e.Message);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Error("CheckAndDeleteNewVersion3Bins", e.Message);
+            }
+        }
 
+        #endregion Update miner plugin dlls
 
-#endregion Update miner plugin dlls
-
-        public static void LoadAndInitMinerPlugins()
+        public static async Task LoadAndInitMinerPlugins()
         {
             // load dll's and create plugin containers
             var loadedPlugins = MinerPluginHost.LoadPlugins(Paths.MinerPluginsPath());
@@ -235,12 +265,149 @@ namespace NHMCore.Mining.Plugins
                 }
             }
             // cross reference local and online list
-            CrossReferenceInstalledWithOnline();
-            EthlargementIntegratedPlugin.Instance.ServiceEnabled = ConfigManager.GeneralConfig.UseEthlargement && Helpers.IsElevated;
+            var success = await GetOnlineMinerPlugins();
+            if (success) CrossReferenceInstalledWithOnline();
+            EthlargementIntegratedPlugin.Instance.ServiceEnabled = MiscSettings.Instance.UseEthlargement && Helpers.IsElevated;
             Logger.Info("MinerPluginsManager", "Finished initialization of miners.");
         }
 
-        public static async Task DevicesCrossReferenceIDsWithMinerIndexes()
+        public static Task RunninLoops { get; private set; } = null;
+
+        public static void StartLoops(CancellationToken stop)
+        {
+            RunninLoops = Task.Run(() => {
+                var loop1 = MainLoop(stop);
+                return Task.WhenAll(loop1);
+            });
+        }
+
+        private static async Task MainLoop(CancellationToken stop)
+        {
+            try
+            {
+                var checkWaitTime = TimeSpan.FromMilliseconds(50);
+                Func<bool> isActive = () => !stop.IsCancellationRequested;
+
+
+                // TODO set this interval somwhere
+                // periodically update the plugin list
+                var getOnlineMinerPluginsElapsedTimeChecker = new ElapsedTimeChecker(MinerPluginsUpdaterSettings.CheckPluginsInterval, false);
+
+
+                // TODO for now every minute check
+                // TODO debug only we should check plugin updates after we update the miner plugin API
+                //var pluginsUpdateElapsedTimeChecker = new ElapsedTimeChecker(TimeSpan.FromSeconds(30), false);
+
+                var restartActiveDevicesPluginsList = new List<string>();
+
+                Logger.Debug("MinerPluginsManager", $"STARTING MAIN LOOP");
+                while (isActive())
+                {
+                    try
+                    {
+                        if (isActive()) await TaskHelpers.TryDelay(checkWaitTime, stop);
+
+                        if (isActive() && getOnlineMinerPluginsElapsedTimeChecker.CheckAndMarkElapsedTime() && UpdateSettings.Instance.AutoUpdateMinerPlugins)
+                        {
+                            Logger.Debug("MinerPluginsManager", $"Checking for plugin updates");
+                            // TODO Cross refference online plugins
+                            var success = await GetOnlineMinerPlugins();
+                            if (success)
+                            {
+                                Logger.Debug("MinerPluginsManager", $"Checking for plugin updates SUCCESS");
+                                CrossReferenceInstalledWithOnline();
+                                // TODO check settings for plugins updates installs
+                                // TODO install online compatible plugins
+                                Logger.Debug("MinerPluginsManager", $"Checking plugins to Install/Update");
+                                foreach (var packageInfoCR in PluginsPackagesInfosCRs)
+                                {
+                                    var pluginUUID = packageInfoCR.Key;
+                                    // plugin updates cases
+                                    var installed = packageInfoCR.Value.Installed;
+                                    var supportedAndCompatible = packageInfoCR.Value.CompatibleNHPluginVersion && packageInfoCR.Value.Supported;
+                                    var updatesEnabled = packageInfoCR.Value.IsAutoUpdateEnabled;
+                                    var canUpdate = supportedAndCompatible && installed && packageInfoCR.Value.HasNewerVersion;
+                                    var compatibleNotInstalled = !installed && supportedAndCompatible && false; // disable by default
+                                    var isInstalling = MinerPluginInstallTasks.ContainsKey(pluginUUID);
+
+                                    if (updatesEnabled && !isInstalling && (canUpdate || compatibleNotInstalled))
+                                    {
+                                        Logger.Debug("MinerPluginsManager", $"Main loop Install/Update {packageInfoCR.Key}");
+
+                                        IProgress<Tuple<PluginInstallProgressState, int>> progress = null;
+                                        if (_minerPluginInstallTasksProgress.TryGetValue(pluginUUID, out progress))
+                                        {
+                                            // TODO log no progress
+                                        }
+                                        _ = DownloadAndInstall(pluginUUID, progress);
+                                    }
+                                }
+                                // check plugins to instal
+                            }
+                            else
+                            {
+                                Logger.Debug("MinerPluginsManager", $"Checking for plugin updates FAIL");
+                            }
+                        }
+
+                        // TODO trigger active device re-evaluation after install/remove/updates are finished
+                        if (isActive() && (_minerPluginInstallRemoveStates.Count + restartActiveDevicesPluginsList.Count) > 0)
+                        {
+                            var finishedKeys = new List<string>();
+                            foreach (var kvp in _minerPluginInstallRemoveStates)
+                            {
+                                if (kvp.Value != PluginInstallRemoveState.Remove && kvp.Value != PluginInstallRemoveState.InstallOrUpdate)
+                                {
+                                    restartActiveDevicesPluginsList.Add(kvp.Key);
+                                    finishedKeys.Add(kvp.Key);
+                                }
+                                Logger.DebugDelayed("MinerPluginsManager", $"_minerPluginInstallRemoveStates {kvp.Key}-{kvp.Value.ToString()}", TimeSpan.FromSeconds(5));
+                            }
+                            var allRemoved = true;
+                            foreach (var key in finishedKeys)
+                            {
+                                allRemoved &= _minerPluginInstallRemoveStates.TryRemove(key, out var _);
+                            }
+                            if (!allRemoved)
+                            {
+                                Logger.DebugDelayed("MinerPluginsManager", $"_minerPluginInstallRemoveStates allRemoved false", TimeSpan.FromSeconds(5));
+                            }
+                            if (_minerPluginInstallRemoveStates.Count == 0)
+                            {
+                                restartActiveDevicesPluginsList.Clear();
+                                Logger.DebugDelayed("MinerPluginsManager", $"RESTART ACTIVE DEVICES", TimeSpan.FromSeconds(5));
+                                _ = ApplicationStateManager.RestartDevicesState();
+                            }
+                            else
+                            {
+                                Logger.DebugDelayed("MinerPluginsManager", $"SKIP!!!!!!!!!!!!!!! RESTART ACTIVE DEVICES", TimeSpan.FromSeconds(5));
+                            }
+                        }
+                    }
+                    catch (TaskCanceledException e)
+                    {
+                        Logger.Info("MinerPluginsManager", $"Main Loop TaskCanceledException {e.Message}");
+                        return;
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("MinerPluginsManager", $"Main Loop Tick Exception {e.Message}");
+                    }
+                }
+            }
+            finally
+            {
+                Logger.Debug("MinerPluginsManager", $"EXITING MAIN LOOP");
+                // cleanup
+                var pluginUUIDs = MinerPluginInstallTasks.Keys;
+                foreach (var pluginUUID in pluginUUIDs)
+                {
+                    TryCancelInstall(pluginUUID);
+                }
+            }            
+        }
+
+        public static async Task DevicesCrossReferenceIDsWithMinerIndexes(IStartupLoader loader)
         {
             // get devices
             var baseDevices = AvailableDevices.Devices.Select(dev => dev.BaseDevice);
@@ -248,9 +415,24 @@ namespace NHMCore.Mining.Plugins
                 .Where(p => p.IsCompatible)
                 .Where(p => p.Enabled)
                 .ToArray();
+
+            if (checkPlugins.Length > 0 && loader != null) {
+                loader.SecondaryVisible = true;
+                loader.SecondaryTitle = Translations.Tr("Devices Cross Reference");
+                loader?.SecondaryProgress?.Report((Translations.Tr("Pending"), 0));
+            }
+            var pluginDoneCount = 0d;
             foreach (var plugin in checkPlugins)
             {
+                
+                loader?.SecondaryProgress?.Report((Translations.Tr("Cross Reference {0}", plugin.Name), (int)((pluginDoneCount / checkPlugins.Length) * 100)));
                 await plugin.DevicesCrossReference(baseDevices);
+                pluginDoneCount += 1;
+                loader?.SecondaryProgress?.Report((Translations.Tr("Cross Reference {0}", plugin.Name), (int)((pluginDoneCount / checkPlugins.Length) * 100)));
+            }
+            if (loader != null)
+            {
+                loader.SecondaryVisible = false;
             }
         }
 
@@ -272,7 +454,9 @@ namespace NHMCore.Mining.Plugins
                     Logger.Info("MinerPluginsManager", $"Downloading missing files for {plugin.PluginUUID}-{plugin.Name}");
                     var downloadProgress = new Progress<int>(perc => progress?.Report((Translations.Tr("Downloading {0} %", $"{plugin.Name} {perc}"), perc)));
                     var unzipProgress = new Progress<int>(perc => progress?.Report((Translations.Tr("Unzipping {0} %", $"{plugin.Name} {perc}"), perc)));
-                    await DownloadInternalBins(plugin.PluginUUID, urls.ToList(), downloadProgress, unzipProgress, stop);
+                    await DownloadInternalBins(plugin, urls.ToList(), downloadProgress, unzipProgress, stop);
+                    // check if we have missing files after the download 
+                    if (plugin.CheckBinaryPackageMissingFiles().Any()) AvailableNotifications.CreateMissingMinerBinsInfo(plugin.Name);
                 }
             }
         }
@@ -294,7 +478,7 @@ namespace NHMCore.Mining.Plugins
                     Logger.Info("MinerPluginsManager", $"Version mismatch for {plugin.PluginUUID}-{plugin.Name}. Downloading...");
                     var downloadProgress = new Progress<int>(perc => progress?.Report((Translations.Tr("Downloading {0} %", $"{plugin.Name} {perc}"), perc)));
                     var unzipProgress = new Progress<int>(perc => progress?.Report((Translations.Tr("Unzipping {0} %", $"{plugin.Name} {perc}"), perc)));
-                    await DownloadInternalBins(plugin.PluginUUID, urls.ToList(), downloadProgress, unzipProgress, stop);
+                    await DownloadInternalBins(plugin, urls.ToList(), downloadProgress, unzipProgress, stop);
                 }
             }
         }
@@ -328,8 +512,11 @@ namespace NHMCore.Mining.Plugins
 
         public static void RemovePlugin(string pluginUUID, bool crossReferenceInstalledWithOnline = true)
         {
+            // assume ok
+            var isOk = true;
             try
             {
+                _minerPluginInstallRemoveStates.TryAdd(pluginUUID, PluginInstallRemoveState.Remove);
                 var deletePath = Path.Combine(Paths.MinerPluginsPath(), pluginUUID);
                 MinerPluginHost.MinerPlugin.Remove(pluginUUID);
                 var oldPlugins = PluginContainer.PluginContainers.Where(p => p.PluginUUID == pluginUUID).ToArray();
@@ -362,11 +549,22 @@ namespace NHMCore.Mining.Plugins
                 }
             } catch(Exception e)
             {
+                isOk = false;
                 Logger.Error("MinerPluginsManager", $"Error occured while removing {pluginUUID} plugin: {e.Message}");
-            }       
+            }
+            finally
+            {
+                if (isOk)
+                {
+                    _minerPluginInstallRemoveStates.TryUpdate(pluginUUID, PluginInstallRemoveState.RemoveSuccess, PluginInstallRemoveState.Remove);
+                }
+                else
+                {
+                    _minerPluginInstallRemoveStates.TryUpdate(pluginUUID, PluginInstallRemoveState.RemoveFailed, PluginInstallRemoveState.Remove);
+                }
+            }
         }
 
-#warning "blocking method!!! Make it non blocking and change where it gets called"
         public static void CrossReferenceInstalledWithOnline()
         {
             // first go over the installed plugins
@@ -389,20 +587,20 @@ namespace NHMCore.Mining.Plugins
                 };
                 if (PluginsPackagesInfosCRs.ContainsKey(uuid) == false)
                 {
-                    PluginsPackagesInfosCRs[uuid] = new PluginPackageInfoCR{};
+                    PluginsPackagesInfosCRs[uuid] = new PluginPackageInfoCR(uuid);
                 }
                 PluginsPackagesInfosCRs[uuid].LocalInfo = localPluginInfo;
             }
 
             // get online list and check what we have and what is online
-            if (GetOnlineMinerPlugins() == false || OnlinePlugins == null) return;
+            if (OnlinePlugins == null) return;
 
             foreach (var online in OnlinePlugins)
             {
                 var uuid = online.PluginUUID;
                 if (PluginsPackagesInfosCRs.ContainsKey(uuid) == false)
                 {
-                    PluginsPackagesInfosCRs[uuid] = new PluginPackageInfoCR{};
+                    PluginsPackagesInfosCRs[uuid] = new PluginPackageInfoCR(uuid);
                 }
                 PluginsPackagesInfosCRs[uuid].OnlineInfo = online;
                 if (online.SupportedDevicesAlgorithms != null)
@@ -415,8 +613,9 @@ namespace NHMCore.Mining.Plugins
                         .Count();
                     PluginsPackagesInfosCRs[uuid].OnlineSupportedDeviceCount = devRank;
                 }
-                
             }
+
+            MinerPluginsManagerState.Instance.RankedPlugins = RankedPlugins.ToList();
         }
 
         public static List<string> GetPluginUUIDsAndVersionsList()
@@ -448,14 +647,14 @@ namespace NHMCore.Mining.Plugins
             }
         }
 
-        // TODO this here is blocking
-        public static bool GetOnlineMinerPlugins()
+
+        public static async Task<bool> GetOnlineMinerPlugins()
         {
             try
             {
                 using (var client = new NoKeepAlivesWebClient())
                 {
-                    string s = client.DownloadString(Links.PluginsJsonApiUrl);
+                    string s = await client.DownloadStringTaskAsync(Links.PluginsJsonApiUrl);
                     //// local fake string
                     //string s = Properties.Resources.pluginJSON;
                     var onlinePlugins = JsonConvert.DeserializeObject<List<PluginPackageInfo>>(s, new JsonSerializerSettings
@@ -483,9 +682,11 @@ namespace NHMCore.Mining.Plugins
 
 #region DownloadingInstalling
 
-        public static async Task DownloadInternalBins(string pluginUUID, List<string> urls, IProgress<int> downloadProgress, IProgress<int> unzipProgress, CancellationToken stop)
+        public static async Task DownloadInternalBins(PluginContainer pluginContainer, List<string> urls, IProgress<int> downloadProgress, IProgress<int> unzipProgress, CancellationToken stop)
         {
-            var installingPluginBinsPath = Path.Combine(Paths.MinerPluginsPath(), pluginUUID, "bins");
+            var pluginUUID = pluginContainer.PluginUUID;
+            var ver = pluginContainer.Version;
+            var installingPluginBinsPath = Path.Combine(Paths.MinerPluginsPath(), pluginUUID, "bins", $"{ver.Major}.{ver.Minor}");
             try
             {
                 if (Directory.Exists(installingPluginBinsPath)) Directory.Delete(installingPluginBinsPath, true);
@@ -522,12 +723,21 @@ namespace NHMCore.Mining.Plugins
         }
 
         private static ConcurrentDictionary<string, MinerPluginInstallTask> MinerPluginInstallTasks = new ConcurrentDictionary<string, MinerPluginInstallTask>();
+        // with WPF we have only one Progress 
+        private static ConcurrentDictionary<string, IProgress<Tuple<PluginInstallProgressState, int>>> _minerPluginInstallTasksProgress = new ConcurrentDictionary<string, IProgress<Tuple<PluginInstallProgressState, int>>>();
+        
+        private static ConcurrentDictionary<string, PluginInstallRemoveState> _minerPluginInstallRemoveStates = new ConcurrentDictionary<string, PluginInstallRemoveState>();
 
         public static void InstallAddProgress(string pluginUUID, IProgress<Tuple<PluginInstallProgressState, int>> progress)
         {
             if (MinerPluginInstallTasks.TryGetValue(pluginUUID, out var installTask))
             {
                 installTask.AddProgress(progress);
+            }
+            // 
+            if (_minerPluginInstallTasksProgress.ContainsKey(pluginUUID) == false)
+            {
+                _minerPluginInstallTasksProgress.TryAdd(pluginUUID, progress);
             }
         }
 
@@ -537,11 +747,15 @@ namespace NHMCore.Mining.Plugins
             {
                 installTask.RemoveProgress(progress);
             }
+            if (_minerPluginInstallTasksProgress.TryRemove(pluginUUID, out var _) == false)
+            {
+                // log error
+            }
         }
 
         public static void TryCancelInstall(string pluginUUID)
         {
-            if (MinerPluginInstallTasks.TryGetValue(pluginUUID, out var installTask))
+            if (MinerPluginInstallTasks.TryRemove(pluginUUID, out var installTask))
             {
                 installTask.TryCancelInstall();
             }
@@ -551,15 +765,20 @@ namespace NHMCore.Mining.Plugins
         {
             // TODO skip install if alredy in progress
             var addSuccess = false;
+            _minerPluginInstallRemoveStates.TryAdd(pluginUUID, PluginInstallRemoveState.InstallOrUpdate);
+            var installResult = PluginInstallProgressState.Canceled;
             using (var minerInstall = new MinerPluginInstallTask())
             {
                 try
                 {
                     var pluginPackageInfo = PluginsPackagesInfosCRs[pluginUUID];
                     addSuccess = MinerPluginInstallTasks.TryAdd(pluginUUID, minerInstall);
-                    progress?.Report(Tuple.Create(PluginInstallProgressState.Pending, 0));
-                    minerInstall.AddProgress(progress);
-                    await DownloadAndInstall(pluginPackageInfo, minerInstall, minerInstall.CancelInstallToken);
+                    if (progress != null)
+                    {
+                        progress?.Report(Tuple.Create(PluginInstallProgressState.Pending, 0));
+                        minerInstall.AddProgress(progress);
+                    }
+                    installResult = await DownloadAndInstall(pluginPackageInfo, minerInstall, minerInstall.CancelInstallToken);
                 }
                 finally
                 {
@@ -567,11 +786,23 @@ namespace NHMCore.Mining.Plugins
                     {
                         MinerPluginInstallTasks.TryRemove(pluginUUID, out var _);
                     }
+                    if (installResult == PluginInstallProgressState.Success)
+                    {
+                        AvailableNotifications.CreatePluginUpdateInfo(PluginsPackagesInfosCRs[pluginUUID].PluginName, true);
+                        _minerPluginInstallRemoveStates.TryUpdate(pluginUUID, PluginInstallRemoveState.InstallOrUpdateSuccess, PluginInstallRemoveState.InstallOrUpdate);
+                    }
+                    else
+                    {
+                        AvailableNotifications.CreatePluginUpdateInfo(PluginsPackagesInfosCRs[pluginUUID].PluginName, false);
+                        _minerPluginInstallRemoveStates.TryUpdate(pluginUUID, PluginInstallRemoveState.InstallOrUpdateFailed, PluginInstallRemoveState.InstallOrUpdate);
+                    }
                 }
             }
         }
 
-        internal static async Task DownloadAndInstall(PluginPackageInfoCR plugin, IProgress<Tuple<PluginInstallProgressState, int>> progress, CancellationToken stop)
+
+
+        internal static async Task<PluginInstallProgressState> DownloadAndInstall(PluginPackageInfoCR plugin, IProgress<Tuple<PluginInstallProgressState, int>> progress, CancellationToken stop)
         {
             var downloadPluginProgressChangedEventHandler = new Progress<int>(perc => progress?.Report(Tuple.Create(PluginInstallProgressState.DownloadingPlugin, perc)));
             var zipProgressPluginChangedEventHandler = new Progress<int>(perc => progress?.Report(Tuple.Create(PluginInstallProgressState.ExtractingPlugin, perc)));
@@ -579,75 +810,69 @@ namespace NHMCore.Mining.Plugins
             var zipProgressMinerChangedEventHandler = new Progress<int>(perc => progress?.Report(Tuple.Create(PluginInstallProgressState.ExtractingMiner, perc)));
 
             var finalState = PluginInstallProgressState.Pending;
-            const string installingPrefix = "installing_";
-            var installingPluginPath = Path.Combine(Paths.MinerPluginsPath(), $"{installingPrefix}{plugin.PluginUUID}");
+            var versionStr = $"{plugin.OnlineInfo.PluginVersion.Major}.{plugin.OnlineInfo.PluginVersion.Minor}";
+            var pluginRootPath = Path.Combine(Paths.MinerPluginsPath(), plugin.PluginUUID);
+            var installDllPath = Path.Combine(pluginRootPath, "dlls", versionStr);
+            var installBinsPath = Path.Combine(pluginRootPath, "bins", versionStr);
             try
             {
-                if (Directory.Exists(installingPluginPath)) Directory.Delete(installingPluginPath, true);
-                //downloadAndInstallUpdate("Starting");
-                Directory.CreateDirectory(installingPluginPath);
+                if (Directory.Exists(installDllPath)) Directory.Delete(installDllPath, true);
+                Directory.CreateDirectory(installDllPath);
+                if (Directory.Exists(installBinsPath)) Directory.Delete(installBinsPath, true);
+                Directory.CreateDirectory(installBinsPath);
 
                 // download plugin dll
                 progress?.Report(Tuple.Create(PluginInstallProgressState.PendingDownloadingPlugin, 0));
-                var downloadPluginResult = await MinersDownloadManager.DownloadFileAsync(plugin.PluginPackageURL, installingPluginPath, "plugin", downloadPluginProgressChangedEventHandler, stop);
+                var downloadPluginResult = await MinersDownloadManager.DownloadFileAsync(plugin.PluginPackageURL, installDllPath, "plugin", downloadPluginProgressChangedEventHandler, stop);
                 var pluginPackageDownloaded = downloadPluginResult.downloadedFilePath;
                 var downloadPluginOK = downloadPluginResult.success;
                 if (!downloadPluginOK || stop.IsCancellationRequested)
                 {
                     finalState = stop.IsCancellationRequested ? PluginInstallProgressState.Canceled : PluginInstallProgressState.FailedDownloadingPlugin;
-                    return;
+                    return finalState;
                 }
                 // unzip 
                 progress?.Report(Tuple.Create(PluginInstallProgressState.PendingExtractingPlugin, 0));
-                var unzipPluginOK = await ArchiveHelpers.ExtractFileAsync(pluginPackageDownloaded, installingPluginPath, zipProgressPluginChangedEventHandler, stop);
+                var unzipPluginOK = await ArchiveHelpers.ExtractFileAsync(pluginPackageDownloaded, installDllPath, zipProgressPluginChangedEventHandler, stop);
                 if (!unzipPluginOK || stop.IsCancellationRequested)
                 {
                     finalState = stop.IsCancellationRequested ? PluginInstallProgressState.Canceled : PluginInstallProgressState.FailedExtractingPlugin;
-                    return;
+                    return finalState;
                 }
                 File.Delete(pluginPackageDownloaded);
 
                 // download plugin binary
                 progress?.Report(Tuple.Create(PluginInstallProgressState.PendingDownloadingMiner, 0));
-                var downloadMinerBinsResult = await MinersDownloadManager.DownloadFileAsync(plugin.MinerPackageURL, installingPluginPath, "miner_bins", downloadMinerProgressChangedEventHandler, stop);
+                var downloadMinerBinsResult = await MinersDownloadManager.DownloadFileAsync(plugin.MinerPackageURL, installBinsPath, "miner_bins", downloadMinerProgressChangedEventHandler, stop);
                 var binsPackageDownloaded = downloadMinerBinsResult.downloadedFilePath;
                 var downloadMinerBinsOK = downloadMinerBinsResult.success;
                 if (!downloadMinerBinsOK || stop.IsCancellationRequested)
                 {
                     finalState = stop.IsCancellationRequested ? PluginInstallProgressState.Canceled : PluginInstallProgressState.FailedDownloadingMiner;
-                    return;
+                    return finalState;
                 }
                 // unzip 
                 progress?.Report(Tuple.Create(PluginInstallProgressState.PendingExtractingMiner, 0));
-                var binsUnzipPath = Path.Combine(installingPluginPath, "bins");
-                var unzipMinerBinsOK = await ArchiveHelpers.ExtractFileAsync(binsPackageDownloaded, binsUnzipPath, zipProgressMinerChangedEventHandler, stop);
+                var unzipMinerBinsOK = await ArchiveHelpers.ExtractFileAsync(binsPackageDownloaded, installBinsPath, zipProgressMinerChangedEventHandler, stop);
                 if (!unzipMinerBinsOK || stop.IsCancellationRequested)
                 {
                     finalState = stop.IsCancellationRequested ? PluginInstallProgressState.Canceled : PluginInstallProgressState.FailedExtractingMiner;
-                    return;
+                    return finalState;
                 }
                 File.Delete(binsPackageDownloaded);
 
                 // TODO from here on add the failed plugin load state and success state
-                var loadedPlugins = MinerPluginHost.LoadPlugin(installingPluginPath);
+                var loadedPlugins = MinerPluginHost.LoadPlugin(installDllPath);
                 if (loadedPlugins.Count() == 0)
                 {
                     //downloadAndInstallUpdate($"Loaded ZERO PLUGINS");
                     finalState = stop.IsCancellationRequested ? PluginInstallProgressState.Canceled : PluginInstallProgressState.FailedPluginLoad;
-                    Directory.Delete(installingPluginPath, true);
-                    return;
+                    Directory.Delete(installDllPath, true);
+                    return finalState;
                 }
 
                 //downloadAndInstallUpdate("Checking old plugin");
-                var pluginPath = Path.Combine(Paths.MinerPluginsPath(), plugin.PluginUUID);
-                // if there is an old plugin installed remove it
-                if (Directory.Exists(pluginPath))
-                {
-                    // TODO consider saving the internal settings when updating the miner plugin
-                    Directory.Delete(pluginPath, true);
-                }
                 //downloadAndInstallUpdate($"Loaded {loadedPlugins} PLUGIN");
-                Directory.Move(installingPluginPath, pluginPath);
                 // add or update plugins
                 foreach (var pluginUUID in loadedPlugins)
                 {
@@ -659,22 +884,46 @@ namespace NHMCore.Mining.Plugins
                         PluginContainer.RemovePluginContainer(old);
                     }
                     var newPlugin = PluginContainer.Create(newExternalPlugin);
+                    // TODO/TESTING scope for our fake plugins
+                    try
+                    {
+                        var newPluginDllSettings = Directory.GetFiles(installDllPath, "*.json");
+                        foreach (var jsonFile in newPluginDllSettings)
+                        {
+                            var name = Path.GetFileName(jsonFile);
+                            var installJSONFilePath = Path.Combine(pluginRootPath, name);
+                            File.Copy(jsonFile, installJSONFilePath, true);
+                        }
+                    }
+                    catch { }
                     var success = newPlugin.InitPluginContainer();
                     // TODO after add or remove plugins we should clean up the device settings
                     if (success)
                     {
+                        var oldInstalledDlls = Directory.GetFiles(pluginRootPath, "*.dll");
+                        foreach (var oldDll in oldInstalledDlls)
+                        {
+                            File.Delete(oldDll);
+                        }
+                        var newDllPath = Directory.GetFiles(installDllPath).FirstOrDefault();
+                        var name = Path.GetFileNameWithoutExtension(newDllPath);
+                        var newVerStr = $"{newPlugin.Version.Major}.{newPlugin.Version.Minor}";
+                        var installedDllPath = Path.Combine(pluginRootPath, $"{name}-{newVerStr}.dll");
+                        File.Copy(newDllPath, installedDllPath);
+
                         newPlugin.AddAlgorithmsToDevices();
                         await newPlugin.DevicesCrossReference(AvailableDevices.Devices.Select(d => d.BaseDevice));
+                        finalState = stop.IsCancellationRequested ? PluginInstallProgressState.Canceled : PluginInstallProgressState.Success;
                     }
                     else
                     {
+                        finalState = stop.IsCancellationRequested ? PluginInstallProgressState.Canceled : PluginInstallProgressState.FailedPluginInit;
                         // TODO mark that this plugin wasn't loaded
                         Logger.Error("MinerPluginsManager", $"DownloadAndInstall unable to init and install {pluginUUID}");
                     }
                 }
                 // cross reference local and online list
                 CrossReferenceInstalledWithOnline();
-                finalState = stop.IsCancellationRequested ? PluginInstallProgressState.Canceled : PluginInstallProgressState.Success;
             }
             catch (Exception e)
             {
@@ -686,6 +935,7 @@ namespace NHMCore.Mining.Plugins
             {
                 progress?.Report(Tuple.Create(finalState, 0));
             }
+            return finalState;
         }
 #endregion DownloadingInstalling
     }

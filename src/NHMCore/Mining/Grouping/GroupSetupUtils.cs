@@ -118,14 +118,13 @@ namespace NHMCore.Mining.Grouping
             }
         }
 
-#if FORCE_MINING
         public static List<MiningDevice> GetMiningDevices(IEnumerable<ComputeDevice> devices, bool log)
         {
-            return devices.Select(dev => new MiningDevice(dev)).ToList();
-        }
-#else
-        public static List<MiningDevice> GetMiningDevices(IEnumerable<ComputeDevice> devices, bool log)
-        {
+            if (BuildOptions.FORCE_MINING)
+            {
+                return devices.Select(dev => new MiningDevice(dev)).ToList(); ;
+            }
+
             var miningNonMiningDevs = GetMiningAndNonMiningDevices(devices);
             if (log)
             {
@@ -134,7 +133,6 @@ namespace NHMCore.Mining.Grouping
 
             return miningNonMiningDevs.Item1;
         }
-#endif
 
         // avarage passed in benchmark values
         public static void AvarageSpeeds(List<MiningDevice> miningDevs)
@@ -178,10 +176,10 @@ namespace NHMCore.Mining.Grouping
                                 .FindIndex((a) => a.AlgorithmStringID == algoID);
                             if (index > -1)
                             {
-                                miningDevs[minerDevIndex].Algorithms[index].AvaragedSpeed = avaragedSpeed;
+                                miningDevs[minerDevIndex].Algorithms[index].AveragedSpeeds[0] = avaragedSpeed;
                                 if (miningDevs[minerDevIndex].Algorithms[index].IsDual)
                                 {
-                                    miningDevs[minerDevIndex].Algorithms[index].SecondaryAveragedSpeed = secondaryAveragedSpeed;
+                                    miningDevs[minerDevIndex].Algorithms[index].AveragedSpeeds[1] = secondaryAveragedSpeed;
                                 }
                             }
                         }

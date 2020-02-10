@@ -11,35 +11,37 @@ using System.Threading.Tasks;
 
 namespace TTMiner
 {
-    public class TTMinerPlugin : PluginBase, IDevicesCrossReference
+    public partial class TTMinerPlugin : PluginBase, IDevicesCrossReference
     {
         public TTMinerPlugin()
         {
+            // mandatory init
+            InitInsideConstuctorPluginSupportedAlgorithmsSettings();
             // set default internal settings
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
             DefaultTimeout = PluginInternalSettings.DefaultTimeout;
             GetApiMaxTimeoutConfig = PluginInternalSettings.GetApiMaxTimeoutConfig;
-            // https://bitcointalk.org/index.php?topic=5025783.0 current 3.0.10 // TODO update
+            // https://bitcointalk.org/index.php?topic=5025783.0 
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
-                BinVersion = "3.0.10",
+                BinVersion = "3.2.2",
                 ExePath = new List<string> { "TT-Miner.exe" },
                 Urls = new List<string>
                 {
-                    "https://github.com/nicehash/MinerDownloads/releases/download/1.9.1.12b/TT-Miner-3.0.10.zip",
-                    "https://tradeproject.de/download/Miner/TT-Miner-3.0.10.zip" // original
+                    "https://github.com/nicehash/MinerDownloads/releases/download/1.9.2.16plus/TT-Miner-3.2.2.7z",
+                    "https://tradeproject.de/download/Miner/TT-Miner-3.2.2.zip" // original
                 }
             };
             PluginMetaInfo = new PluginMetaInfo
             {
                 PluginDescription = "TT-Miner is mining software for NVIDIA devices.",
-                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+                SupportedDevicesAlgorithms = SupportedDevicesAlgorithmsDict()
             };
         }
 
         public override string PluginUUID => "f1945a30-7237-11e9-b20c-f9f12eb6d835";
 
-        public override Version Version => new Version(3, 2);
+        public override Version Version => new Version(5, 0);
         public override string Name => "TTMiner";
         public override string Author => "info@nicehash.com";
 
@@ -65,19 +67,11 @@ namespace TTMiner
             foreach (var gpu in cudaGpus)
             {
                 _mappedDeviceIds[gpu.UUID] = gpu.ID; //lazy init -> TT-Miner sorts devices as we do
-                var algos = GetSupportedAlgorithms(gpu).ToList();
+                var algos = GetSupportedAlgorithmsForDevice(gpu);
                 if (algos.Count > 0) supported.Add(gpu, algos);
             }
 
             return supported;
-        }
-
-        IReadOnlyList<Algorithm> GetSupportedAlgorithms(CUDADevice gpu)
-        {
-            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsNVIDIA(PluginUUID);
-            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
-            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
-            return filteredAlgorithms;
         }
 
         public async Task DevicesCrossReference(IEnumerable<BaseDevice> devices)
@@ -98,13 +92,50 @@ namespace TTMiner
         public override IEnumerable<string> CheckBinaryPackageMissingFiles()
         {
             var pluginRootBinsPath = GetBinAndCwdPaths().Item2;
-            return BinaryPackageMissingFilesCheckerHelpers.ReturnMissingFiles(pluginRootBinsPath, new List<string> { "nvml.dll", "nvrtc64_92.dll", "nvrtc64_100_0.dll", "nvrtc64_101_0.dll",
-                "nvrtc-builtins64_92.dll", "nvrtc-builtins64_100.dll", "nvrtc-builtins64_101.dll", "TT-SubSystem.dll", "TT-Miner.exe", @"Algos\AlgoEthash.dll", @"Algos\AlgoEthash-C92.dll",
-                @"Algos\AlgoEthash-C100.dll",  @"Algos\AlgoLyra2Rev3-C100.dll", @"Algos\AlgoLyra2Rev3-C92.dll", @"Algos\AlgoLyra2Rev3.dll", @"Algos\AlgoMTP-C100.dll",
-                @"Algos\AlgoMTP-C92.dll", @"Algos\AlgoMTP.dll", @"Algos\AlgoMyrGr-C100.dll", @"Algos\AlgoMyrGr-C92.dll", @"Algos\AlgoMyrGr.dll", @"Algos\AlgoProgPoW092-C100.dll",
-                @"Algos\AlgoProgPoW092-C92.dll", @"Algos\AlgoProgPoW092.dll", @"Algos\AlgoProgPoW.dll",  @"Algos\AlgoProgPoW-C100.dll", @"Algos\AlgoProgPoW-C92.dll",
-                @"Algos\AlgoProgPoWZ-C100.dll", @"Algos\AlgoProgPoWZ-C92.dll", @"Algos\AlgoProgPoWZ.dll", @"Algos\AlgoTethashV1-C100.dll", @"Algos\AlgoTethashV1-C92.dll", @"Algos\AlgoTethashV1.dll",
-                @"Algos\AlgoUbqhash-C100.dll", @"Algos\AlgoUbqhash-C92.dll", @"Algos\AlgoUbqhash.dll"
+            return BinaryPackageMissingFilesCheckerHelpers.ReturnMissingFiles(pluginRootBinsPath, new List<string> {
+                "nvml.dll",
+                "nvrtc64_100_0.dll",
+                "nvrtc64_101_0.dll",
+                "nvrtc64_102_0.dll",
+                "nvrtc64_92.dll",
+                "nvrtc-builtins64_100.dll",
+                "nvrtc-builtins64_101.dll",
+                "nvrtc-builtins64_102.dll",
+                "nvrtc-builtins64_92.dll",
+                "TT-Miner.exe",
+                "TT-SubSystem.dll",
+                "Algos/AlgoEagleSong.dll",
+                "Algos/AlgoEagleSong-C100.dll",
+                "Algos/AlgoEagleSong-C101.dll",
+                "Algos/AlgoEagleSong-C92.dll",
+                "Algos/AlgoEthash.dll",
+                "Algos/AlgoEthash-C100.dll",
+                "Algos/AlgoEthash-C101.dll",
+                "Algos/AlgoEthash-C92.dll",
+                "Algos/AlgoLyra2Rev3.dll",
+                "Algos/AlgoLyra2Rev3-C100.dll",
+                "Algos/AlgoLyra2Rev3-C101.dll",
+                "Algos/AlgoLyra2Rev3-C92.dll",
+                "Algos/AlgoMTP.dll",
+                "Algos/AlgoMTP-C100.dll",
+                "Algos/AlgoMTP-C101.dll",
+                "Algos/AlgoMTP-C92.dll",
+                "Algos/AlgoProgPoW.dll",
+                "Algos/AlgoProgPoW092.dll",
+                "Algos/AlgoProgPoW092-C100.dll",
+                "Algos/AlgoProgPoW092-C101.dll",
+                "Algos/AlgoProgPoW092-C92.dll",
+                "Algos/AlgoProgPoW-C100.dll",
+                "Algos/AlgoProgPoW-C101.dll",
+                "Algos/AlgoProgPoW-C92.dll",
+                "Algos/AlgoProgPoWZ.dll",
+                "Algos/AlgoProgPoWZ-C100.dll",
+                "Algos/AlgoProgPoWZ-C101.dll",
+                "Algos/AlgoProgPoWZ-C92.dll",
+                "Algos/AlgoUbqhash.dll",
+                "Algos/AlgoUbqhash-C100.dll",
+                "Algos/AlgoUbqhash-C101.dll",
+                "Algos/AlgoUbqhash-C92.dll",
             });
         }
 

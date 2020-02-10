@@ -1,12 +1,9 @@
 ﻿using NHM.Common;
 using NHM.Common.Algorithm;
 using NHM.Common.Enums;
-using NHMCore.Benchmarking;
+using NHMCore.ApplicationState;
 using NHMCore.Configs;
 using NHMCore.Mining.Plugins;
-using NHMCore.Stats;
-using NHMCore.Switching;
-using NHMCore.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,15 +20,59 @@ namespace NHMCore.Mining
 
         public string PluginName => PluginContainer?.Name ?? "N/A";
 
-        public Version ConfigVersion { get; set; } = new Version(1, 0);
+        public Version ConfigVersion { get; internal set; } = new Version(1, 0);
         public Version PluginVersion => PluginContainer?.Version;
+
+        // status is always calculated
+        public AlgorithmStatus Status
+        {
+            get
+            {
+                if (!Enabled) return AlgorithmStatus.Disabled;
+                if (IsCurrentlyMining) return AlgorithmStatus.Mining;
+
+                // TODO errors
+                if (BenchmarkErrorMessage != null)
+                {
+                    return AlgorithmStatus.ErrorBenchmark;
+                }
+                // pending states
+                if (IsBenchmarking) return AlgorithmStatus.Benchmarking;
+                if (IsBenchmarkPending) return AlgorithmStatus.BenchmarkPending;
+
+                // order matters here!!!
+                if (!EstimatedProfitAllSMAPresent) return AlgorithmStatus.MissingSMA;
+                if (!EstimatedProfitAllSMAPositiveOrZero) return AlgorithmStatus.ErrorNegativeSMA;
+                if (Speeds.Sum() == 0) return AlgorithmStatus.NoBenchmark;
+                if (IsReBenchmark) return AlgorithmStatus.ReBenchmark;
+
+                if (0  >= CurrentEstimatedProfit) return AlgorithmStatus.Unprofitable;
+                
+                return AlgorithmStatus.Benchmarked;
+            }
+        }
 
         public AlgorithmContainer(Algorithm algorithm, PluginContainer pluginContainer, ComputeDevice computeDevice)
         {
             PluginContainer = pluginContainer;
             Algorithm = algorithm;
             ComputeDevice = computeDevice;
+
+            computeDevice.PropertyChanged += ComputeDevice_PropertyChanged;
+            OnPropertyChanged(nameof(IsUserEditable));
         }
+
+        private void ComputeDevice_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (nameof(NHMCore.Mining.ComputeDevice.State) == e.PropertyName)
+            {
+                var miningOrBenchmarking = ComputeDevice.State == DeviceState.Benchmarking || ComputeDevice.State == DeviceState.Mining;
+                IsUserEditable = !miningOrBenchmarking;
+                OnPropertyChanged(nameof(IsUserEditable));
+            }
+        }
+
+        public bool IsUserEditable { get; private set; } = true;
 
         /// <summary>
         /// Used for converting SMA values to BTC/H/Day
@@ -44,7 +85,7 @@ namespace NHMCore.Mining
         {
             get
             {
-                return _lastBenchmarkingFailed && !BenchmarkManager.DisableLastBenchmarkingFailed;
+                return _lastBenchmarkingFailed;
             }
             set
             {
@@ -58,17 +99,7 @@ namespace NHMCore.Mining
         /// Friendly display name for this algorithm
         /// </summary>
         public string AlgorithmName => Algorithm?.AlgorithmName ?? "";
-        /// <summary>
-        /// Friendly name for miner type
-        /// </summary>
-        public string MinerBaseTypeName
-        {
-            get
-            {
-                if (PluginContainer == null) return "";
-                return PluginContainer.Name;
-            }
-        }
+
         /// <summary>
         /// Friendly name for this algorithm/miner combo
         /// </summary>
@@ -88,25 +119,14 @@ namespace NHMCore.Mining
         /// <summary>
         /// Hashrate in H/s set by benchmark or user
         /// </summary>
-
-#if FORCE_MINING
         public double BenchmarkSpeed
         {
             get
             {
-                return 1000;
-            }
-            set
-            {
-                Algorithm.Speeds[0] = 1000;
-                NotifySpeedChanged();
-            }
-        }
-#else
-        public double BenchmarkSpeed
-        {
-            get
-            {
+                if (BuildOptions.FORCE_MINING)
+                {
+                    return 1000;
+                }
                 return Algorithm.Speeds[0];
             }
             set
@@ -115,7 +135,6 @@ namespace NHMCore.Mining
                 NotifySpeedChanged();
             }
         }
-#endif
 
         public double SecondaryBenchmarkSpeed
         {
@@ -165,14 +184,6 @@ namespace NHMCore.Mining
         }
 
         /// <summary>
-        /// Gets the averaged speed for this algorithm in H/s
-        /// <para>When multiple devices of the same model are used, this will be set to their averaged hashrate</para>
-        /// </summary>
-        public double AvaragedSpeed { get; set; }
-
-        public double SecondaryAveragedSpeed { get; set; }
-
-        /// <summary>
         /// String containing raw extralaunchparams entered by user
         /// </summary>
         public string ExtraLaunchParameters
@@ -202,6 +213,7 @@ namespace NHMCore.Mining
             {
                 if (Algorithm != null) Algorithm.Enabled = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(Status));
             }
         }
 
@@ -210,6 +222,8 @@ namespace NHMCore.Mining
         /// </summary>
         public virtual bool BenchmarkNeeded => BenchmarkSpeed <= 0 && !LastBenchmarkingFailed;
 
+        public bool HasBenchmark => Speeds.Sum() > 0;
+
         protected void NotifySpeedChanged()
         {
             OnPropertyChanged(nameof(BenchmarkSpeed));
@@ -217,35 +231,155 @@ namespace NHMCore.Mining
             OnPropertyChanged(nameof(Speeds));
             OnPropertyChanged(nameof(AnnotatedSpeeds));
             OnPropertyChanged(nameof(BenchmarkNeeded));
-            OnPropertyChanged(nameof(CurPayingRateStr));
+            OnPropertyChanged(nameof(CurrentEstimatedProfit));
+            OnPropertyChanged(nameof(CurrentEstimatedProfitStr));
+            OnPropertyChanged(nameof(Status));
+            OnPropertyChanged(nameof(HasBenchmark));
         }
 
         #endregion
 
         #region Profitability
 
+        #region EstimatedProfit NOT FOR SWITCHING
+
+
+        internal void UpdateEstimatedProfit(Dictionary<AlgorithmType, double> profits)
+        {
+            _updateEstimatedProfitCalled = true;
+            if (profits == null) return;
+            var containedIDs = profits.Keys.Where(key => IDs.Contains(key)).ToArray();
+
+            EstimatedProfitAllSMAPresent = IDs.Length == containedIDs.Length;
+            EstimatedProfitAllSMAPositiveOrZero = EstimatedProfitAllSMAPresent && IDs.All(id => profits[id] >= 0);
+
+            // clear old values
+            _lastEstimatedProfitSMA.Clear();
+            foreach (var id in containedIDs) _lastEstimatedProfitSMA[id] = profits[id];
+
+            // notify changed
+            OnPropertyChanged(nameof(CurrentEstimatedProfit));
+            OnPropertyChanged(nameof(CurrentEstimatedProfitStr));
+            OnPropertyChanged(nameof(Status));
+        }
+
+        private bool _updateEstimatedProfitCalled = false;
+        internal readonly Dictionary<AlgorithmType, double> _lastEstimatedProfitSMA = new Dictionary<AlgorithmType, double>();
+
+        private bool EstimatedProfitAllSMAPresent = false;
+        private bool EstimatedProfitAllSMAPositiveOrZero = false;
+
+        public double CurrentEstimatedProfit
+        {
+            get
+            {
+                if (BuildOptions.FORCE_MINING)
+                {
+                    return 1000;
+                }
+
+                if (!_updateEstimatedProfitCalled) return -2;
+                
+                if (EstimatedProfitAllSMAPresent && EstimatedProfitAllSMAPositiveOrZero)
+                {
+                    var newProfit = 0d;
+                    foreach (var speed in AnnotatedSpeeds)
+                    {
+                        var paying = _lastEstimatedProfitSMA[speed.Algo];
+                        newProfit += paying * speed.Value * Mult;
+                    }
+                    // TODO estimate profit subtraction ???
+                    return Math.Round(newProfit, 8);
+                }
+                // we can't calculate 
+                return  -1;
+            }
+        }
+        public string CurrentEstimatedProfitStr
+        {
+            
+            get
+            {
+                var currentEstimatedProfit = CurrentEstimatedProfit;
+                // WPF or null
+                if (currentEstimatedProfit < 0) return "---";
+                // TODO BTC scaling
+                return currentEstimatedProfit.ToString("0.00000000");
+            }
+        }
+
+        [Obsolete("TODO DELETE WinForms")]
+        public string CurPayingRatioStr
+        {
+            get
+            {
+                if (!_updateEstimatedProfitCalled || !EstimatedProfitAllSMAPresent) return Translations.Tr("N/A");
+                var payingRatios = IDs.Select(id => _lastEstimatedProfitSMA[id]).ToArray();
+                if (payingRatios.Length > 0)
+                {
+                    return string.Join("+", payingRatios);
+                }
+                return Translations.Tr("N/A");
+            }
+        }
+
+        #endregion EstimatedProfit NOT FOR SWITCHING
+
+        #region NormalizedProfit FOR SWITCHING
+        // TODO with this implementation WE ONLY SUPPORT dual algorithms
         /// <summary>
-        /// Current profit for this algorithm in BTC/Day
+        /// Gets the averaged speed for this algorithm in H/s
+        /// <para>When multiple devices of the same model are used, this will be set to their averaged hashrate</para>
         /// </summary>
-        public double CurrentProfit { get; protected set; }
+        public double[] AveragedSpeeds { get; private set; } = new double[2] { 0.0d, 0.0d };
         /// <summary>
         /// Current SMA profitability for this algorithm type in BTC/GH/Day
         /// </summary>
-        public double CurNhmSmaDataVal { get; private set; }
-        public double SecondaryCurNhmSmaDataVal { get; private set; }
+        public double[] NormalizedSMAData { get; private set; } = new double[2] { 0.0d, 0.0d };
+
+        /// <summary>
+        /// Current profit for this algorithm in BTC/Day
+        /// </summary>
+        public double CurrentNormalizedProfit { get; protected set; }
+
+
+
+        #endregion NormalizedProfit FOR SWITCHING
 
         /// <summary>
         /// Power consumption of this algorithm, in Watts
         /// </summary>
         public virtual double PowerUsage { get; set; }
 
-        #endregion
+#endregion
 
-        public bool IsReBenchmark { get; set; } = false;
+        private bool _isReBenchmark = false;
+        public bool IsReBenchmark
+        {
+            get => _isReBenchmark;
+            set
+            {
+                _isReBenchmark = value;
+                OnPropertyChanged(nameof(IsReBenchmark));
+                OnPropertyChanged(nameof(Status));
+            }
+        }
+
+        private bool _isCurrentlyMining = false;
+        internal bool IsCurrentlyMining
+        {
+            get => _isCurrentlyMining;
+            set
+            {
+                _isCurrentlyMining = value;
+                OnPropertyChanged(nameof(IsCurrentlyMining));
+                OnPropertyChanged(nameof(Status));
+            }
+        }
+
+        
 
         #region Benchmark info
-
-        public string BenchmarkStatus { get; set; }
 
         private bool _benchmarkPending;
         public bool IsBenchmarkPending
@@ -255,24 +389,26 @@ namespace NHMCore.Mining
             {
                 _benchmarkPending = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(Status));
             }
         }
 
         private bool _inBenchmark;
-        public bool InBenchmark
+        public bool IsBenchmarking
         {
             get => _inBenchmark;
             set
             {
                 _inBenchmark = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(Status));
             }
         }
 
-        public bool BenchmarkErred => ErrorMessage != null;
+        public bool BenchmarkErred => BenchmarkErrorMessage != null;
 
         private string _errorMessage;
-        public string ErrorMessage
+        public string BenchmarkErrorMessage
         {
             get => _errorMessage;
             set
@@ -280,6 +416,7 @@ namespace NHMCore.Mining
                 _errorMessage = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(BenchmarkErred));
+                OnPropertyChanged(nameof(Status));
             }
         }
 
@@ -289,171 +426,56 @@ namespace NHMCore.Mining
             this.Speeds = allZero;
         }
 
-        public string CurPayingRatio
-        {
-            get
-            {
-                var payingRatios = new List<double>();
-                for (int i = 0; i < IDs.Count(); i++)
-                {
-                    var id = IDs[i];
-                    if (NHSmaData.TryGetPaying(id, out var paying) == false) continue;
-                    payingRatios.Add(paying);
-                }
-                if (payingRatios.Count > 0)
-                {
-                    return string.Join("+", payingRatios);
-                }
-                return Translations.Tr("N/A");
-            }
-        }
+#endregion
 
-#if FORCE_MINING
-        public double CurPayingRate
-        {
-            get
-            {
-                return 1000;
-            }
-        }
-#else
-        public double CurPayingRate
-        {
-            get
-            {
-                var payingRate = 0d;
-                for (int i = 0; i < IDs.Count(); i++)
-                {
-                    var id = IDs[i];
-                    if (NHSmaData.TryGetPaying(id, out var paying) == false) continue;
-                    var speed = Speeds[i];
-                    payingRate += speed * paying * Mult;
-                }
-                return payingRate;
-            }
-        }
-#endif
-
-        public string CurPayingRateStr
-        {
-            get
-            {
-                var payingRate = 0d;
-                for (int i = 0; i < IDs.Count(); i++)
-                {
-                    var id = IDs[i];
-                    if (NHSmaData.TryGetPaying(id, out var paying) == false) continue;
-                    var speed = Speeds[i];
-                    payingRate += speed * paying * Mult;
-                }
-                if (payingRate > 0)
-                {
-                    return payingRate.ToString("F8");
-                }
-                return Translations.Tr("N/A"); ;
-            }
-        }
-
-        #endregion
-
-        #region Benchmark methods
+#region Benchmark methods
 
         public void SetBenchmarkPending()
         {
-            SetBenchmarkPendingNoMsg();
-            BenchmarkStatus = Translations.Tr("Waiting benchmark");
-        }
-
-        public void SetBenchmarkPendingNoMsg()
-        {
             IsBenchmarkPending = true;
-            ErrorMessage = null;
-        }
-
-        private bool IsPendingString()
-        {
-            return BenchmarkStatus == Translations.Tr("Waiting benchmark")
-                   || BenchmarkStatus == "."
-                   || BenchmarkStatus == ".."
-                   || BenchmarkStatus == "...";
+            BenchmarkErrorMessage = null;
         }
 
         public void ClearBenchmarkPending()
         {
             IsBenchmarkPending = false;
-            if (IsPendingString())
-            {
-                BenchmarkStatus = "";
-            }
         }
 
-        public virtual void ClearBenchmarkPendingFirst()
+        public void SetBenchmarkError(string message)
         {
-            IsBenchmarkPending = false;
-            BenchmarkStatus = "";
+            BenchmarkErrorMessage = message;
         }
 
-        public string BenchmarkSpeedString()
-        {
-            if (Enabled && IsBenchmarkPending && !string.IsNullOrEmpty(BenchmarkStatus))
-            {
-                return BenchmarkStatus;
-            }
-            if (BenchmarkSpeed > 0)
-            {
-                return Helpers.FormatSpeedOutput(AnnotatedSpeeds);
-            }
-            if (!IsPendingString() && !string.IsNullOrEmpty(BenchmarkStatus))
-            {
-                return BenchmarkStatus;
-            }
-            return Translations.Tr("none");
-        }
+#endregion
 
-        public void SetError(string message)
-        {
-            ErrorMessage = message;
-        }
+#region Profitability methods
 
-        #endregion
-
-        #region Profitability methods
-
-        public virtual void UpdateCurProfit(Dictionary<AlgorithmType, double> profits)
+        public virtual void UpdateCurrentNormalizedProfit(Dictionary<AlgorithmType, double> profits)
         {
             var newProfit = 0d;
             for (int i = 0; i < IDs.Length; i++)
             {
                 var id = IDs[i];
-                if (profits.TryGetValue(id, out var paying) == false) continue;
-                if (i == 0)
-                {
-                    CurNhmSmaDataVal = paying;
-                    newProfit += CurNhmSmaDataVal * AvaragedSpeed * Mult;
+                if (profits.TryGetValue(id, out var paying) == false) {
+                    NormalizedSMAData[i] = -1;
+                    continue;
                 }
-                else if (i == 1)
-                {
-                    SecondaryCurNhmSmaDataVal = paying;
-                    newProfit += SecondaryCurNhmSmaDataVal * SecondaryAveragedSpeed * Mult;
-                }
+                NormalizedSMAData[i] = paying;
+                newProfit += paying * AveragedSpeeds[i] * Mult;
             }
-            CurrentProfit = newProfit;
-            //profits.TryGetValue(NiceHashID, out var paying);
-            //CurNhmSmaDataVal = paying;
-            //CurrentProfit = CurNhmSmaDataVal * AvaragedSpeed * Mult;
-            if (!ConfigManager.IsMiningRegardlesOfProfit) SubtractPowerFromProfit();
+            CurrentNormalizedProfit = newProfit;
+
+            if (!MiningProfitSettings.Instance.MineRegardlessOfProfit)
+            {
+                // This is power usage in BTC/hr
+                var power = PowerUsage / 1000 * BalanceAndExchangeRates.Instance.GetKwhPriceInBtc();
+                // Now it is power usage in BTC/day
+                power *= 24;
+                // Now we subtract from profit, which may make profit negative
+                CurrentNormalizedProfit -= power;
+            }
         }
 
-        protected void SubtractPowerFromProfit()
-        {
-            // This is power usage in BTC/hr
-            var power = PowerUsage / 1000 * ExchangeRateApi.GetKwhPriceInBtc();
-            // Now it is power usage in BTC/day
-            power *= 24;
-            // Now we subtract from profit, which may make profit negative
-            CurrentProfit -= power;
-        }
-
-        #endregion
+#endregion
     }
 }

@@ -1,14 +1,68 @@
 ﻿using MinerPluginToolkitV1;
+using NHM.Common;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace NHMCore.Mining.Plugins
 {
     // cross referenced local and online
-    public class PluginPackageInfoCR
+    public class PluginPackageInfoCR : NotifyChangedBase
     {
-        public PluginPackageInfo OnlineInfo { get; set; }
-        public PluginPackageInfo LocalInfo { get; set; }
+        public PluginPackageInfoCR(string pluginUUID)
+        {
+            // check auto update
+            try
+            {
+                IsAutoUpdateEnabled = !File.Exists(Paths.MinerPluginsPath(pluginUUID, "disable_autoupdates"));
+            }
+            catch (Exception e)
+            {
+                Logger.Debug("PluginPackageInfoCR constructor", $"PluginPackageInfoCR {e.Message}");
+            }
+        }
+        private PluginPackageInfo _onlineInfo { get; set; }
+        public PluginPackageInfo OnlineInfo
+        {
+            get => _onlineInfo;
+            set
+            {
+                _onlineInfo = value;
+                OnPropertyChanged(nameof(OnlineInfo));
+                CommonOnPropertyChanged();
+            }
+        }
+
+        private PluginPackageInfo _localInfo;
+        public PluginPackageInfo LocalInfo
+        {
+            get => _localInfo;
+            set
+            {
+                _localInfo = value;
+                OnPropertyChanged(nameof(LocalInfo));
+                OnPropertyChanged(nameof(Installed));
+                CommonOnPropertyChanged();
+            }
+        }
+
+        private void CommonOnPropertyChanged()
+        {
+            OnPropertyChanged(nameof(HasNewerVersion));
+
+            OnPropertyChanged(nameof(PluginDescription));
+            OnPropertyChanged(nameof(PluginAuthor));
+            OnPropertyChanged(nameof(SupportedDevicesAlgorithms));
+
+            // online only but can be here
+            OnPropertyChanged(nameof(MinerPackageURL));
+            OnPropertyChanged(nameof(PluginPackageURL));
+
+            OnPropertyChanged(nameof(PluginVersion));
+            OnPropertyChanged(nameof(PluginName));
+            OnPropertyChanged(nameof(PluginUUID));
+        }
 
         public bool HasNewerVersion
         {
@@ -40,15 +94,18 @@ namespace NHMCore.Mining.Plugins
             {
                 var ver = OnlineInfo?.PluginVersion ?? null;
                 var isNHPlugin = "info@nicehash.com" == OnlineInfo?.PluginAuthor;
-                // current supported major versions start with 3, if not version 3 mark as incompatible
-                if (isNHPlugin && ver != null && ver.Major != 3) return false;
+                // 5 brings new interfaces + Eaglesong, 6 new algo Cuckaroom, 7 new algo GrinCuckatoo32
+                // current supported major versions are 5-7 inclusive (older not supported)
+                if (isNHPlugin && ver != null) {
+                    return ver.Major == 5 || ver.Major == 6 || ver.Major == 7;
+                }
                 // here we assume it is compatible so allow install
                 return true;
             }
         }
 
-// PluginPackageInfo region
-public string PluginUUID
+        // PluginPackageInfo region
+        public string PluginUUID
         {
             get
             {
@@ -122,6 +179,36 @@ public string PluginUUID
                 // prefer local over online
                 var desc = LocalInfo?.PluginDescription ?? OnlineInfo?.PluginDescription ?? "N/A";
                 return desc;
+            }
+        }
+
+        // TODO this shouldn't be here
+        private bool _isAutoUpdateEnabled = true;
+        public bool IsAutoUpdateEnabled
+        {
+            get
+            {
+                return _isAutoUpdateEnabled;
+            }
+            set
+            {
+                _isAutoUpdateEnabled = value;
+                try
+                {
+                    var disableAutoUpdatesFile = Paths.MinerPluginsPath(PluginUUID, "disable_autoupdates");
+                    if (value)
+                    {
+                        File.Delete(disableAutoUpdatesFile);
+                    }
+                    else
+                    {
+                        File.Create(disableAutoUpdatesFile);
+                    }
+                }
+                catch (Exception e)
+                {
+                }
+                OnPropertyChanged(nameof(IsAutoUpdateEnabled));
             }
         }
     }

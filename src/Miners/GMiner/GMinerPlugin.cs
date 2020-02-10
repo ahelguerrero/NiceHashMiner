@@ -12,10 +12,12 @@ using MinerPluginToolkitV1.Interfaces;
 
 namespace GMinerPlugin
 {
-    public class GMinerPlugin : PluginBase, IDevicesCrossReference
+    public partial class GMinerPlugin : PluginBase, IDevicesCrossReference
     {
         public GMinerPlugin()
         {
+            // mandatory init
+            InitInsideConstuctorPluginSupportedAlgorithmsSettings();
             // set default internal settings
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
             GetApiMaxTimeoutConfig = PluginInternalSettings.GetApiMaxTimeoutConfig;
@@ -23,23 +25,23 @@ namespace GMinerPlugin
             // https://bitcointalk.org/index.php?topic=5034735.0 | https://github.com/develsoftware/GMinerRelease/releases
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
-                BinVersion = "1.68",
+                BinVersion = "1.96",
                 ExePath = new List<string> { "miner.exe" },
                 Urls = new List<string>
                 {
-                    "https://github.com/develsoftware/GMinerRelease/releases/download/1.68/gminer_1_68_windows64.zip", // original
+                    "https://github.com/develsoftware/GMinerRelease/releases/download/1.96/gminer_1_96_windows64.zip", // original
                 }
             };
             PluginMetaInfo = new PluginMetaInfo
             {
                 PluginDescription = "GMiner - High-performance miner for NVIDIA and AMD GPUs.",
-                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+                SupportedDevicesAlgorithms = SupportedDevicesAlgorithmsDict()
             };
         }
 
         public override string PluginUUID => "1b7019d0-7237-11e9-b20c-f9f12eb6d835";
 
-        public override Version Version => new Version(3, 2);
+        public override Version Version => new Version(6, 3);
 
         public override string Name => "GMinerCuda9.0+";
 
@@ -91,33 +93,17 @@ namespace GMinerPlugin
                 ++pcieId;
                 if (gpu is AMDDevice amd)
                 {
-                    var algorithms = GetAMDSupportedAlgorithms(amd).ToList();
+                    var algorithms = GetSupportedAlgorithmsForDevice(amd);
                     if (algorithms.Count > 0) supported.Add(amd, algorithms);
                 }
-                // TODO we don't check GMiner minimum driver version
                 if (gpu is CUDADevice cuda)
                 {
-                    var algorithms = GetCUDASupportedAlgorithms(cuda);
+                    var algorithms = GetSupportedAlgorithmsForDevice(cuda);
                     if (algorithms.Count > 0) supported.Add(cuda, algorithms);
                 }
             }
 
             return supported;
-        }
-
-        IReadOnlyList<Algorithm> GetCUDASupportedAlgorithms(CUDADevice gpu) {
-            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsNVIDIA(PluginUUID);
-            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
-            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
-            return filteredAlgorithms;
-        }
-
-        IReadOnlyList<Algorithm> GetAMDSupportedAlgorithms(AMDDevice gpu)
-        {
-            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsAMD(PluginUUID);
-            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
-            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
-            return filteredAlgorithms;
         }
 
         private static bool IsSupportedAMDDevice(BaseDevice dev)
@@ -160,10 +146,9 @@ namespace GMinerPlugin
         {
             try
             {
-                var isReBenchVersion = benchmarkedPluginVersion.Major == 3 && benchmarkedPluginVersion.Minor < 2;
-                var first = ids.FirstOrDefault();
-                var isBenchAlgo = first == AlgorithmType.GrinCuckarood29 || first == AlgorithmType.CuckooCycle;
-                return isReBenchVersion && isBenchAlgo;
+                if (benchmarkedPluginVersion.Major == 6 && benchmarkedPluginVersion.Minor < 3) {
+                    return ids.FirstOrDefault() == AlgorithmType.Cuckaroom;
+                }
             }
             catch (Exception e)
             {

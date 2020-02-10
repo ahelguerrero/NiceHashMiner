@@ -85,7 +85,7 @@ namespace NHM.Common.Enums
         SHA256AsicBoost = 35,
         //[Obsolete("UNUSED Algorithm")]
         ZHash = 36,
-        //[Obsolete("UNUSED Algorithm")]
+        [Obsolete("UNUSED Algorithm. Replaced by BeamV2")]
         Beam = 37,
         //[Obsolete("UNUSED Algorithm")]
         GrinCuckaroo29 = 38,
@@ -105,6 +105,13 @@ namespace NHM.Common.Enums
         BeamV2 = 45,
         //[Obsolete("UNUSED Algorithm")]
         X16Rv2 = 46,
+        //[Obsolete("UNUSED Algorithm")]
+        RandomXmonero = 47,
+        //[Obsolete("UNUSED Algorithm")]
+        Eaglesong = 48,
+        //[Obsolete("UNUSED Algorithm")]
+        Cuckaroom = 49,
+        GrinCuckatoo32 = 50,
         #endregion // NiceHashAPI
     }
 
@@ -124,6 +131,7 @@ namespace NHM.Common.Enums
                 case AlgorithmType.GrinCuckatoo31:
                 case AlgorithmType.CuckooCycle:
                 case AlgorithmType.GrinCuckarood29:
+                case AlgorithmType.Cuckaroom:
                     return "G/s";
                 default:
                     return "H/s";

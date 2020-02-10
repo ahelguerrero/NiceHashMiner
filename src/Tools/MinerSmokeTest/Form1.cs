@@ -38,7 +38,7 @@ namespace MinerSmokeTest
 
         public static object[] GetAlgorithmRowData(AlgorithmContainer a)
         {
-            object[] rowData = { a.Enabled, a.AlgorithmName, a.MinerBaseTypeName };
+            object[] rowData = { a.Enabled, a.AlgorithmName, a.PluginName };
             return rowData;
         }
 
@@ -77,7 +77,7 @@ namespace MinerSmokeTest
         }
 
 
-        private void dgv_devices_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private async void dgv_devices_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             dgv_algo.Rows.Clear();
             if (!(e.RowIndex >= 0)) return;
@@ -99,7 +99,8 @@ namespace MinerSmokeTest
             {
                 var deviceEnabled = checkbox.Value != null && (bool)checkbox.Value;
                 checkbox.Value = !deviceEnabled;
-                device.Enabled = !deviceEnabled;
+                var set = (device.Uuid, !deviceEnabled);
+                await ApplicationStateManager.SetDeviceEnabledState(this, set);
             }
             var algorithms = device.AlgorithmSettings;
             foreach (var algo in algorithms)
@@ -185,7 +186,7 @@ namespace MinerSmokeTest
 
                         tbx_info.Text += $"TESTING: {Environment.NewLine}";
                         tbx_info.Text += $"Device: {device.GetFullName()} {Environment.NewLine}";
-                        tbx_info.Text += $"Miner base: {algorithm.MinerBaseTypeName}" + Environment.NewLine;
+                        tbx_info.Text += $"Miner base: {algorithm.PluginName}" + Environment.NewLine;
                         tbx_info.Text += $"Algorithm: {algorithm.AlgorithmName}" + Environment.NewLine;
 
                         label1.Text = $"{step} / {testSteps}";
@@ -251,7 +252,7 @@ namespace MinerSmokeTest
 
                         tbx_info.Text += $"TESTING: {Environment.NewLine}";
                         tbx_info.Text += $"Device: {device.GetFullName()} {Environment.NewLine}";
-                        tbx_info.Text += $"Miner base: {algorithm.MinerBaseTypeName}" + Environment.NewLine;
+                        tbx_info.Text += $"Miner base: {algorithm.PluginName}" + Environment.NewLine;
                         tbx_info.Text += $"Algorithm: {algorithm.AlgorithmName}" + Environment.NewLine;
 
                         label1.Text = $"{step} / {testSteps}";

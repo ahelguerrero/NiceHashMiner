@@ -37,7 +37,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\Debug\</OutputPath>
+    <OutputPath>..\..\Debug\app\</OutputPath>
     <DefineConstants>TRACE;DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -47,7 +47,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\..\Release\</OutputPath>
+    <OutputPath>..\..\Release\app\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -55,7 +55,8 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>Resources\logo.ico</ApplicationIcon>
+    <ApplicationIcon>
+    </ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
@@ -97,88 +98,102 @@
       <HintPath>..\..\packages\System.ValueTuple.4.5.0\lib\netstandard1.0\System.ValueTuple.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml" />
+    <Reference Include="websocket-sharp, Version=1.0.2.59611, Culture=neutral, PublicKeyToken=5660b08a1845a91e, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\WebSocketSharp.1.0.3-rc11\lib\websocket-sharp.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApplicationStateManager\ApplicationStateManager.cs" />
-    <Compile Include="ApplicationStateManager\ApplicationStateManager.DataVizualizers.cs" />
     <Compile Include="ApplicationStateManager\ApplicationStateManager.Devices.cs" />
     <Compile Include="ApplicationStateManager\ApplicationStateManager.Init.cs" />
     <Compile Include="ApplicationStateManager\ApplicationStateManager.Mining.cs" />
     <Compile Include="ApplicationStateManager\ApplicationStateManager.Program.cs" />
     <Compile Include="ApplicationStateManager\ApplicationStateManager.Refactoring.cs" />
     <Compile Include="ApplicationStateManager\ApplicationStateManager.Timers.cs" />
-    <Compile Include="ApplicationStateManager\ControlBindingsCollectionExtensions.cs" />
-    <Compile Include="ApplicationStateManager\MiningState.cs" />
-    <Compile Include="ApplicationStateManager\RatesAndStatsStates.cs" />
-    <Compile Include="Benchmarking\BenchHelpers\PowerHelper.cs" />
-    <Compile Include="Benchmarking\BenchmarkingAnalyzer.cs" />
-    <Compile Include="Benchmarking\BenchmarkingComputeDeviceHandler.cs" />
-    <Compile Include="Benchmarking\BenchmarkManager.cs" />
-    <Compile Include="Benchmarking\BenchmarkOption.cs" />
-    <Compile Include="Benchmarking\BenchmarkStartSettings.cs" />
-    <Compile Include="BUILD_TAG.cs" />
+    <Compile Include="ApplicationState\BalanceAndExchangeRates.cs" />
+    <Compile Include="ApplicationState\BenchmarkManagerState.cs" />
+    <Compile Include="ApplicationState\MinerPluginsManagerState.cs" />
+    <Compile Include="ApplicationState\MiningState.cs" />
+    <Compile Include="ApplicationState\VersionState.cs" />
     <Compile Include="Configs\CredentialsSettings.cs" />
     <Compile Include="Configs\Data\DeviceTDPSettings.cs" />
     <Compile Include="Configs\Data\PluginAlgorithmConfig.cs" />
+    <Compile Include="Configs\GlobalDeviceSettings.cs" />
+    <Compile Include="Configs\GUISettings.cs" />
     <Compile Include="Configs\IdleMiningSettings.cs" />
+    <Compile Include="Configs\IFTTTSettings.cs" />
+    <Compile Include="Configs\LoggingDebugConsoleSettings.cs" />
     <Compile Include="Configs\MiningProfitSettings.cs" />
+    <Compile Include="Configs\MiningSettings.cs" />
+    <Compile Include="Configs\MiscSettings.cs" />
     <Compile Include="Configs\RunAtStartup.cs" />
+    <Compile Include="Configs\SwitchSettings.cs" />
+    <Compile Include="Configs\ToSSetings.cs" />
     <Compile Include="Configs\TranslationsSettings.cs" />
+    <Compile Include="Configs\UpdateSettings.cs" />
+    <Compile Include="Configs\WarningSettings.cs" />
     <Compile Include="IFTTT.cs" />
-    <Compile Include="Interfaces\DataVisualizer\IBalanceBTCDisplayer.cs" />
-    <Compile Include="Interfaces\DataVisualizer\IBalanceFiatDisplayer.cs" />
-    <Compile Include="Interfaces\DataVisualizer\IDevicesStateDisplayer.cs" />
-    <Compile Include="Interfaces\DataVisualizer\IGlobalMiningRateDisplayer.cs" />
-    <Compile Include="Interfaces\DataVisualizer\IGroupDisplayer.cs" />
-    <Compile Include="Interfaces\DataVisualizer\IMiningProfitabilityDisplayer.cs" />
-    <Compile Include="Interfaces\DataVisualizer\INoInternetConnectionDisplayer.cs" />
-    <Compile Include="Interfaces\DataVisualizer\IStateDisplayer.cs" />
-    <Compile Include="Interfaces\DataVisualizer\IVersionDisplayer.cs" />
-    <Compile Include="Interfaces\IBenchmarkForm.cs" />
-    <Compile Include="Interfaces\IRatesComunication.cs" />
-    <Compile Include="Interfaces\StateSetters\IEnabledDeviceStateSetter.cs" />
-    <Compile Include="Interfaces\StateSetters\IStateSetter.cs" />
+    <Compile Include="Launcher.cs" />
+    <Compile Include="Mining\AlgorithmStatus.cs" />
     <Compile Include="Mining\AvailableDevices.cs" />
     <Compile Include="Mining\ComputeDevice.cs" />
+    <Compile Include="Mining\Benchmarking\PowerHelper.cs" />
+    <Compile Include="Mining\Benchmarking\BenchmarkingAnalyzer.cs" />
+    <Compile Include="Mining\Benchmarking\BenchmarkingComputeDeviceHandler.cs" />
+    <Compile Include="Mining\Benchmarking\BenchmarkManager.cs" />
+    <Compile Include="Mining\Benchmarking\BenchmarkOption.cs" />
+    <Compile Include="Mining\Benchmarking\BenchmarkStartSettings.cs" />
     <Compile Include="Mining\IdleChecking\IdleChangedEventArgs.cs" />
     <Compile Include="Mining\IdleChecking\IdleChecker.cs" />
     <Compile Include="Mining\IdleChecking\IdleCheckManager.cs" />
     <Compile Include="Mining\IdleChecking\InputTimeoutChecker.cs" />
     <Compile Include="Mining\IdleChecking\SessionLockChecker.cs" />
     <Compile Include="Mining\AlgorithmContainer.cs" />
+    <Compile Include="Mining\MiningStats\BaseStats.cs" />
+    <Compile Include="Mining\MiningStats\DeviceMiningStats.cs" />
+    <Compile Include="Mining\MiningStats\MinerMiningStats.cs" />
     <Compile Include="Mining\Plugins\EthlargementIntegratedPlugin.cs" />
     <Compile Include="Mining\Plugins\MinerPluginInstallTask.cs" />
+    <Compile Include="Mining\Plugins\MinerPluginsUpdaterSettings.cs" />
     <Compile Include="Mining\Plugins\PluginInstallProgressState.cs" />
+    <Compile Include="Mining\Plugins\PluginInstallRemoveState.cs" />
     <Compile Include="Mining\Plugins\VC_REDIST_x64_2015_DEPENDENCY_PLUGIN.cs" />
     <Compile Include="Mining\MinerApiWatchdog.cs" />
     <Compile Include="Mining\MiningManager.cs" />
-    <Compile Include="Mining\MiningStats.cs" />
+    <Compile Include="Mining\MiningDataStats.cs" />
     <Compile Include="NHMProductInfo.cs" />
     <Compile Include="Mining\Plugins\PluginContainer.cs" />
     <Compile Include="Mining\Plugins\SupportedAlgorithmsFilter.cs" />
     <Compile Include="Mining\Plugins\SupportedPluginsFilter.cs" />
     <Compile Include="Mining\Plugins\MinerPluginsManager.cs" />
-    <Compile Include="Stats\ErrorCode.cs" />
-    <Compile Include="Stats\Models\ExchangeRateJson.cs" />
-    <Compile Include="Stats\Models\MarketsMessage.cs" />
-    <Compile Include="Stats\Models\MinerStatusMessage.cs" />
-    <Compile Include="Stats\Models\NicehashCredentials.cs" />
-    <Compile Include="Stats\Models\DeviceUpdateEventArgs.cs" />
-    <Compile Include="Stats\Models\EssentialsCall.cs" />
-    <Compile Include="Stats\Models\ExecutedCall.cs" />
-    <Compile Include="Stats\Models\ExecutedInfo.cs" />
-    <Compile Include="Stats\Models\LoginMessage.cs" />
-    <Compile Include="Stats\Models\DeviceStatusMessage.cs" />
-    <Compile Include="Stats\Models\RpcException.cs" />
     <Compile Include="Mining\Plugins\PluginPackageInfoCR.cs" />
-    <Compile Include="Stats\ExchangeRateAPI.cs" />
-    <Compile Include="Stats\NiceHashSocket.cs" />
-    <Compile Include="Stats\NiceHashStats.cs" />
-    <Compile Include="Stats\StatusCodes.cs" />
-    <Compile Include="Stats\TimeFactor.cs" />
+    <Compile Include="Nhmws\ErrorCode.cs" />
+    <Compile Include="Nhmws\Models\ExchangeRateJson.cs" />
+    <Compile Include="Nhmws\Models\MarketsMessage.cs" />
+    <Compile Include="Nhmws\Models\MinerStatusMessage.cs" />
+    <Compile Include="Nhmws\Models\ExecutedCall.cs" />
+    <Compile Include="Nhmws\Models\LoginMessage.cs" />
+    <Compile Include="Nhmws\Models\RpcException.cs" />
+    <Compile Include="Nhmws\NHWebSocket.cs" />
+    <Compile Include="Nhmws\StatusCodes.cs" />
+    <Compile Include="Nhmws\TimeFactor.cs" />
+    <Compile Include="Notifications\AvailableNotifications.cs" />
+    <Compile Include="Notifications\NotificationAction.cs" />
+    <Compile Include="Notifications\INotificationBaseAction.cs" />
+    <Compile Include="Notifications\Notification.cs" />
+    <Compile Include="Notifications\NotificationsGroup.cs" />
+    <Compile Include="Notifications\NotificationsManager.cs" />
+    <Compile Include="Notifications\NotificationsType.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="StratumService.cs" />
     <Compile Include="Utils\ArchiveHelpers.cs" />
     <Compile Include="Utils\DelayedSingleExecActionTask.cs" />
+    <Compile Include="Utils\ElapsedTimeChecker.cs" />
+    <Compile Include="Utils\FilterOSSpecific.cs" />
     <Compile Include="Utils\FirewallRules.cs" />
     <Compile Include="Utils\NotifyPropertyChangedHelpers.cs" />
     <Compile Include="Utils\PInvokeHelpers.cs" />
@@ -191,8 +206,6 @@
     <Compile Include="Configs\ConfigManager.cs" />
     <Compile Include="Configs\Data\DeviceConfig.cs" />
     <Compile Include="Configs\Data\GeneralConfig.cs" />
-    <Compile Include="Interfaces\IBenchmarkCalculation.cs" />
-    <Compile Include="Interfaces\IListItemCheckColorSetter.cs" />
     <Compile Include="Utils\Links.cs" />
     <Compile Include="Mining\Grouping\GroupSetupUtils.cs" />
     <Compile Include="Mining\Grouping\MiningDevice.cs" />
@@ -202,18 +215,18 @@
     <Compile Include="Mining\Miner.cs" />
     <Compile Include="Switching\NHSmaData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utils\TaskHelpers.cs" />
     <Compile Include="Utils\UpdateHelpers.cs" />
+    <Compile Include="Utils\AmdModeSwitcher.cs" />
+    <Compile Include="Utils\WindowsDefender.cs" />
+    <Compile Include="Utils\WindowsUptimeCheck.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-      <DesignTime>True</DesignTime>
-    </Compile>
     <None Include="app.config" />
+    <None Include="OnGPUsLost.bat" />
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
@@ -228,19 +241,6 @@
     </Compile>
     <None Include="README.md" />
     <None Include="Resources\Eula.rtf" />
-    <None Include="translations.json" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Resources\info_black_18.png" />
-    <Content Include="Resources\info_black_36.png" />
-    <Content Include="Resources\logo.ico" />
-    <Content Include="Resources\NHM_logo_big_light.png" />
-    <Content Include="Resources\NHM_logo_med_light.png" />
-    <Content Include="Resources\NHM_logo_small_light.png" />
-    <Content Include="Resources\NHM_logo_xsmall_light.png" />
-    <Content Include="Resources\NHM_logo_xxsmall_light.png" />
-    <None Include="Resources\NHM_Cash_Register_Bitcoin_transparent.png" />
-    <Content Include="Resources\NHM_help_50px.png" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
@@ -262,18 +262,6 @@
     <ProjectReference Include="..\3rdparty\DownloadManager\MyDownloader.Extension\MyDownloader.Extension.csproj">
       <Project>{fea18b6c-491f-401a-a06b-ae47888ff288}</Project>
       <Name>MyDownloader.Extension</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\3rdparty\MessageBoxManager\MessageBoxManager.csproj">
-      <Project>{0e9d874e-5354-465e-9ec3-f7a35c268a8a}</Project>
-      <Name>MessageBoxManager</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\3rdparty\websocket-sharp\websocket-sharp.csproj">
-      <Project>{b357bac7-529e-4d81-a0d2-71041b19c8de}</Project>
-      <Name>websocket-sharp</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Miners\BMiner\BMiner.csproj" Condition="$(DefineConstants.Contains('INTEGRATE_BMiner_PLUGIN'))">
-      <Project>{da54e8c4-73d8-4f1a-be84-0d548b77a2c0}</Project>
-      <Name>BMiner</Name>
     </ProjectReference>
     <ProjectReference Include="..\Miners\BrokenMiner\BrokenMiner.csproj" Condition="$(DefineConstants.Contains('INTEGRATE_BrokenMiner_PLUGIN'))">
       <Project>{2271753a-c4ab-4140-8339-08804764719f}</Project>
@@ -319,9 +307,9 @@
       <Project>{a95ee45c-d188-46e8-91f6-2cf858420bb5}</Project>
       <Name>GMiner</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Miners\LolMinerBeam\LolMinerBeam.csproj" Condition="$(DefineConstants.Contains('INTEGRATE_LolMinerBeam_PLUGIN'))">
-      <Project>{db7ac204-7b8c-4fa4-8d8c-dc133e534d8a}</Project>
-      <Name>LolMinerBeam</Name>
+    <ProjectReference Include="..\Miners\LolMiner\LolMiner.csproj">
+      <Project>{fbb69b33-8a14-4087-909c-f33791384d35}</Project>
+      <Name>LolMiner</Name>
     </ProjectReference>
     <ProjectReference Include="..\Miners\MinerPluginLoader\MinerPluginLoader.csproj">
       <Project>{2c35f83c-aa75-49c0-98e8-082e329b6491}</Project>
@@ -383,6 +371,10 @@
       <Project>{436fa350-a15c-433b-881b-6892b34a4c0d}</Project>
       <Name>XmrStak</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Miners\XmrStakRx\XmrStakRx.csproj" Condition="$(DefineConstants.Contains('INTEGRATE_XmrStakRx_PLUGIN'))">
+      <Project>{436fa350-a15c-433b-881b-6892b34a4c0d}</Project>
+      <Name>XmrStakRx</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Miners\ZEnemy\ZEnemy.csproj" Condition="$(DefineConstants.Contains('INTEGRATE_ZEnemy_PLUGIN'))">
       <Project>{059e2ca2-85c5-453e-a48c-ada45a3c5879}</Project>
       <Name>ZEnemy</Name>
@@ -417,41 +409,42 @@
   </Target>
   <PropertyGroup>
     <PostBuildEvent>REM copy translations. Always copy and replace file
-copy /Y "$(ProjectDir)\translations.json" "$(SolutionDir)$(Configuration)\translations.json"
+copy /Y "$(ProjectDir)\translations.json" "$(SolutionDir)$(Configuration)\app\translations.json"
 REM device detection test script
-copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_test.bat" "$(SolutionDir)$(Configuration)\device_detection_test.bat"
+copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_test.bat" "$(SolutionDir)$(Configuration)\app\device_detection_test.bat"
+REM script to reboot if NVIDIA CUDA is down
+copy /Y "$(ProjectDir)\OnGPUsLost.bat" "$(SolutionDir)$(Configuration)\OnGPUsLost.bat"
 
 REM copy device detection dll's. Copy only if files don't exist
-If NOT exist "$(SolutionDir)$(Configuration)\cpuid.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\cpuid.dll" "$(SolutionDir)$(Configuration)\cpuid.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\cuda_device_detection.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\cuda_device_detection.dll" "$(SolutionDir)$(Configuration)\cuda_device_detection.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\msvcp120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\msvcp120.dll" "$(SolutionDir)$(Configuration)\msvcp120.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\msvcr120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\msvcr120.dll" "$(SolutionDir)$(Configuration)\msvcr120.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\cpuid.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\cpuid.dll" "$(SolutionDir)$(Configuration)\app\cpuid.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\cuda_device_detection.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\cuda_device_detection.dll" "$(SolutionDir)$(Configuration)\app\cuda_device_detection.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\msvcp120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\msvcp120.dll" "$(SolutionDir)$(Configuration)\app\msvcp120.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\msvcr120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\msvcr120.dll" "$(SolutionDir)$(Configuration)\app\msvcr120.dll"
 REM OpenCL.dll inside a separate folder
-If NOT exist "$(SolutionDir)$(Configuration)\OpenCL\" mkdir "$(SolutionDir)$(Configuration)\OpenCL\"
-if NOT exist "$(SolutionDir)$(Configuration)\OpenCL\OpenCL.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\OpenCL\OpenCL.dll" "$(SolutionDir)$(Configuration)\OpenCL\OpenCL.dll"
-if NOT exist "$(SolutionDir)$(Configuration)\OpenCL\README.md" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\OpenCL\README.md" "$(SolutionDir)$(Configuration)\OpenCL\README.md"
-If NOT exist "$(SolutionDir)$(Configuration)\opencl_device_detection.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\opencl_device_detection.dll" "$(SolutionDir)$(Configuration)\opencl_device_detection.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\OpenCL\" mkdir "$(SolutionDir)$(Configuration)\app\OpenCL\"
+if NOT exist "$(SolutionDir)$(Configuration)\app\OpenCL\OpenCL.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\OpenCL\OpenCL.dll" "$(SolutionDir)$(Configuration)\app\OpenCL\OpenCL.dll"
+if NOT exist "$(SolutionDir)$(Configuration)\app\OpenCL\README.md" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\OpenCL\README.md" "$(SolutionDir)$(Configuration)\app\OpenCL\README.md"
+If NOT exist "$(SolutionDir)$(Configuration)\app\opencl_device_detection.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\opencl_device_detection.dll" "$(SolutionDir)$(Configuration)\app\opencl_device_detection.dll"
 REM NVIDIA inside a separate folder
-If NOT exist "$(SolutionDir)$(Configuration)\NVIDIA\" mkdir "$(SolutionDir)$(Configuration)\NVIDIA\"
-if NOT exist "$(SolutionDir)$(Configuration)\NVIDIA\nvml.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\NVIDIA\nvml.dll" "$(SolutionDir)$(Configuration)\NVIDIA\nvml.dll"
-if NOT exist "$(SolutionDir)$(Configuration)\NVIDIA\README.md" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\NVIDIA\README.md" "$(SolutionDir)$(Configuration)\NVIDIA\README.md"
-if NOT exist "$(SolutionDir)$(Configuration)\NVIDIA\license.txt" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\NVIDIA\license.txt" "$(SolutionDir)$(Configuration)\NVIDIA\license.txt"
+If NOT exist "$(SolutionDir)$(Configuration)\app\NVIDIA\" mkdir "$(SolutionDir)$(Configuration)\app\NVIDIA\"
+if NOT exist "$(SolutionDir)$(Configuration)\app\NVIDIA\nvml.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\NVIDIA\nvml.dll" "$(SolutionDir)$(Configuration)\app\NVIDIA\nvml.dll"
+if NOT exist "$(SolutionDir)$(Configuration)\app\NVIDIA\README.md" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\NVIDIA\README.md" "$(SolutionDir)$(Configuration)\app\NVIDIA\README.md"
+if NOT exist "$(SolutionDir)$(Configuration)\app\NVIDIA\license.txt" copy /Y "$(SolutionDir)\pre_compiled_libs\device_detection_x64\NVIDIA\license.txt" "$(SolutionDir)$(Configuration)\app\NVIDIA\license.txt"
 
 
 REM commons dll's for downloaded miners. Copy only if files don't exist. Remove this after plugin system fully replaces integrated miners
 REM create directory
-If NOT exist "$(SolutionDir)$(Configuration)\common\" mkdir "$(SolutionDir)$(Configuration)\common\"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\" mkdir "$(SolutionDir)$(Configuration)\app\common\"
 REM copy over dll's
-If NOT exist "$(SolutionDir)$(Configuration)\common\cudart32_80.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\cudart32_80.dll" "$(SolutionDir)$(Configuration)\common\cudart32_80.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\cudart64_80.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\cudart64_80.dll" "$(SolutionDir)$(Configuration)\common\cudart64_80.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\cudart64_91.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\cudart64_91.dll" "$(SolutionDir)$(Configuration)\common\cudart64_91.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\libcurl.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\libcurl.dll" "$(SolutionDir)$(Configuration)\common\libcurl.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\msvcp120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcp120.dll" "$(SolutionDir)$(Configuration)\common\msvcp120.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\msvcp140.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcp140.dll" "$(SolutionDir)$(Configuration)\common\msvcp140.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\msvcr110.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcr110.dll" "$(SolutionDir)$(Configuration)\common\msvcr110.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\msvcr120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcr120.dll" "$(SolutionDir)$(Configuration)\common\msvcr120.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\OpenCL.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\OpenCL.dll" "$(SolutionDir)$(Configuration)\common\OpenCL.dll"
-If NOT exist "$(SolutionDir)$(Configuration)\common\vcruntime140.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\vcruntime140.dll" "$(SolutionDir)$(Configuration)\common\vcruntime140.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\cudart32_80.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\cudart32_80.dll" "$(SolutionDir)$(Configuration)\app\common\cudart32_80.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\cudart64_80.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\cudart64_80.dll" "$(SolutionDir)$(Configuration)\app\common\cudart64_80.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\cudart64_91.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\cudart64_91.dll" "$(SolutionDir)$(Configuration)\app\common\cudart64_91.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\libcurl.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\libcurl.dll" "$(SolutionDir)$(Configuration)\app\common\libcurl.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\msvcp120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcp120.dll" "$(SolutionDir)$(Configuration)\app\common\msvcp120.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\msvcp140.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcp140.dll" "$(SolutionDir)$(Configuration)\app\common\msvcp140.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\msvcr110.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcr110.dll" "$(SolutionDir)$(Configuration)\app\common\msvcr110.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\msvcr120.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\msvcr120.dll" "$(SolutionDir)$(Configuration)\app\common\msvcr120.dll"
+If NOT exist "$(SolutionDir)$(Configuration)\app\common\vcruntime140.dll" copy /Y "$(SolutionDir)\pre_compiled_libs\common\vcruntime140.dll" "$(SolutionDir)$(Configuration)\app\common\vcruntime140.dll"
 </PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

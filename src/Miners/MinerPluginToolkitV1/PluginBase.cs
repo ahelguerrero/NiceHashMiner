@@ -14,8 +14,9 @@ using System.Linq;
 namespace MinerPluginToolkitV1
 {
     // TODO add documentation
-    public abstract class PluginBase : IMinerPlugin, IInitInternals, IBinaryPackageMissingFilesChecker, IReBenchmarkChecker, IGetApiMaxTimeoutV2, IMinerBinsSource, IBinAndCwdPathsGettter, IGetMinerBinaryVersion, IGetPluginMetaInfo
+    public abstract class PluginBase : IMinerPlugin, IInitInternals, IBinaryPackageMissingFilesChecker, IReBenchmarkChecker, IGetApiMaxTimeoutV2, IMinerBinsSource, IBinAndCwdPathsGettter, IGetMinerBinaryVersion, IGetPluginMetaInfo, IPluginSupportedAlgorithmsSettings, IGetMinerOptionsPackage
     {
+        public static bool IS_CALLED_FROM_PACKER { get; set; } = false;
         protected abstract MinerBase CreateMinerBase();
 
         #region IMinerPlugin
@@ -44,11 +45,13 @@ namespace MinerPluginToolkitV1
         {
             var miner = CreateMinerBase();
             miner.BinAndCwdPathsGettter = this; // set the paths interface
+            miner.PluginSupportedAlgorithms = this; // dev fee, algo names
             // set internal settings
             if (MinerOptionsPackage != null) miner.MinerOptionsPackage = MinerOptionsPackage;
             if (MinerSystemEnvironmentVariables != null) miner.MinerSystemEnvironmentVariables = MinerSystemEnvironmentVariables;
             if (MinerReservedApiPorts != null) miner.MinerReservedApiPorts = MinerReservedApiPorts;
             if (MinerBenchmarkTimeSettings != null) miner.MinerBenchmarkTimeSettings = MinerBenchmarkTimeSettings;
+            if (MinerCustomActionSettings != null) miner.MinerCustomActionSettings = MinerCustomActionSettings;
             return miner;
         }
 
@@ -81,6 +84,12 @@ namespace MinerPluginToolkitV1
 
             var fileMinersBinsUrlsSettings = InternalConfigs.InitInternalSetting(pluginRoot, MinersBinsUrlsSettings, "MinersBinsUrlsSettings.json");
             if (fileMinersBinsUrlsSettings != null) MinersBinsUrlsSettings = fileMinersBinsUrlsSettings;
+
+            var filePluginSupportedAlgorithmsSettings = InternalConfigs.InitInternalSetting(pluginRoot, PluginSupportedAlgorithmsSettings, "PluginSupportedAlgorithmsSettings.json");
+            if (filePluginSupportedAlgorithmsSettings != null) PluginSupportedAlgorithmsSettings = filePluginSupportedAlgorithmsSettings;
+
+            var fileMinerCustomActionSettings = InternalConfigs.InitInternalSetting(pluginRoot, MinerCustomActionSettings, "MinerCustomActionSettings.json");
+            if (fileMinerCustomActionSettings != null) MinerCustomActionSettings = fileMinerCustomActionSettings;
         }
 
         // internal settings
@@ -91,6 +100,22 @@ namespace MinerPluginToolkitV1
         protected MinerBenchmarkTimeSettings MinerBenchmarkTimeSettings { get; set; } = new MinerBenchmarkTimeSettings { };
 
         protected MinersBinsUrlsSettings MinersBinsUrlsSettings { get; set; } = new MinersBinsUrlsSettings { };
+
+        protected MinerCustomActionSettings MinerCustomActionSettings { get; set; } = new MinerCustomActionSettings { };
+
+        public PluginSupportedAlgorithmsSettings PluginSupportedAlgorithmsSettings { get; set; } = new PluginSupportedAlgorithmsSettings();
+
+        // we must define this for every miner plugin
+        protected abstract PluginSupportedAlgorithmsSettings DefaultPluginSupportedAlgorithmsSettings { get; }
+        
+        protected void InitInsideConstuctorPluginSupportedAlgorithmsSettings()
+        {
+            PluginSupportedAlgorithmsSettings = DefaultPluginSupportedAlgorithmsSettings;
+            if (IS_CALLED_FROM_PACKER) return;
+            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), PluginUUID);
+            var filePluginSupportedAlgorithmsSettings = InternalConfigs.InitInternalSetting(pluginRoot, PluginSupportedAlgorithmsSettings, "PluginSupportedAlgorithmsSettings.json");
+            if (filePluginSupportedAlgorithmsSettings != null) PluginSupportedAlgorithmsSettings = filePluginSupportedAlgorithmsSettings;
+        }
 
         #endregion IInitInternals
 
@@ -128,7 +153,7 @@ namespace MinerPluginToolkitV1
             {
                 throw new Exception("Unable to return cwd and exe paths MinersBinsUrlsSettings == null || MinersBinsUrlsSettings.Path == null || MinersBinsUrlsSettings.Path.Count == 0");
             }
-            var paths = new List<string>{ Paths.MinerPluginsPath(), PluginUUID, "bins" };
+            var paths = new List<string>{ Paths.MinerPluginsPath(), PluginUUID, "bins", $"{Version.Major}.{Version.Minor}" };
             paths.AddRange(MinersBinsUrlsSettings.ExePath);
             var binCwd = Path.Combine(paths.GetRange(0, paths.Count - 1).ToArray());
             var binPath = Path.Combine(paths.ToArray());
@@ -154,5 +179,91 @@ namespace MinerPluginToolkitV1
             return PluginMetaInfo;
         }
         #endregion IGetPluginMetaInfo
+
+        #region IGetMinerOptionsPackage
+        MinerOptionsPackage IGetMinerOptionsPackage.GetMinerOptionsPackage() => MinerOptionsPackage;
+        #endregion IGetMinerOptionsPackage
+        #region IPluginSupportedAlgorithmsSettings
+        public virtual bool UnsafeLimits()
+        {
+            return PluginSupportedAlgorithmsSettings.EnableUnsafeRAMLimits;
+        }
+
+        public virtual Dictionary<DeviceType, List<AlgorithmType>> SupportedDevicesAlgorithmsDict()
+        {
+            DeviceType[] deviceTypes = new DeviceType[] { DeviceType.CPU, DeviceType.AMD, DeviceType.NVIDIA };
+            var ret = new Dictionary<DeviceType, List<AlgorithmType>> { };
+            foreach (var deviceType in deviceTypes)
+            {
+                var algos = GetSupportedAlgorithmsForDeviceType(deviceType);
+                if (algos.Count == 0) continue;
+                ret[deviceType] = new HashSet<AlgorithmType>(algos.SelectMany(a => a.IDs)).ToList();
+            }
+            return ret;
+        }
+
+        public virtual List<Algorithm> GetSupportedAlgorithmsForDeviceType(DeviceType deviceType)
+        {
+            if (PluginSupportedAlgorithmsSettings.Algorithms?.ContainsKey(deviceType) ?? false)
+            {
+                var sass = PluginSupportedAlgorithmsSettings.Algorithms[deviceType];
+                return sass.Select(sas => sas.ToAlgorithm(PluginUUID)).ToList();
+            }
+            return new List<Algorithm>(); // return empty
+        }
+
+        public virtual string AlgorithmName(params AlgorithmType[] algorithmTypes)
+        {
+            if (algorithmTypes.Length == 1)
+            {
+                var id = algorithmTypes[0];
+                if (PluginSupportedAlgorithmsSettings.AlgorithmNames != null && PluginSupportedAlgorithmsSettings.AlgorithmNames.ContainsKey(id))
+                {
+                    return PluginSupportedAlgorithmsSettings.AlgorithmNames[id];
+                }
+            }
+            return "";
+        }
+
+        public virtual double DevFee(params AlgorithmType[] algorithmTypes)
+        {
+            if (algorithmTypes.Length == 1)
+            {
+                var id = algorithmTypes[0];
+                if (PluginSupportedAlgorithmsSettings.AlgorithmFees?.ContainsKey(id) ?? false)
+                {
+                    return PluginSupportedAlgorithmsSettings.AlgorithmFees[id];
+                }
+            }
+            return PluginSupportedAlgorithmsSettings.DefaultFee;
+        }
+        #endregion IPluginSupportedAlgorithmsSettings
+
+        protected Dictionary<AlgorithmType, ulong> GetCustomMinimumMemoryPerAlgorithm(DeviceType deviceType)
+        {
+            var ret = new Dictionary<AlgorithmType, ulong>();
+            if (PluginSupportedAlgorithmsSettings.Algorithms?.ContainsKey(deviceType) ?? false)
+            {
+                var sass = PluginSupportedAlgorithmsSettings.Algorithms[deviceType];
+                var customRAMLimits = sass.Where(sas => sas.NonDefaultRAMLimit.HasValue);
+                foreach (var el in customRAMLimits)
+                {
+                    ret[el.IDs.First()] = el.NonDefaultRAMLimit.Value;
+                }
+            }
+            return ret;
+        }
+
+        public IReadOnlyList<Algorithm> GetSupportedAlgorithmsForDevice(BaseDevice dev)
+        {
+            var deviceType = dev.DeviceType;
+            var algorithms = GetSupportedAlgorithmsForDeviceType(deviceType);
+            if (UnsafeLimits() || dev is CPUDevice) return algorithms;
+            // GPU RAM filtering
+            var gpu = dev as IGpuDevice;
+            var ramLimits = GetCustomMinimumMemoryPerAlgorithm(deviceType);
+            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsListCustom(gpu.GpuRam, algorithms, ramLimits);
+            return filteredAlgorithms;
+        }
     }
 }

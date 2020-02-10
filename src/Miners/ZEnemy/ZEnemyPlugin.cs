@@ -10,10 +10,12 @@ using System.Linq;
 
 namespace ZEnemy
 {
-    public class ZEnemyPlugin : PluginBase
+    public partial class ZEnemyPlugin : PluginBase
     {
         public ZEnemyPlugin()
         {
+            // mandatory init
+            InitInsideConstuctorPluginSupportedAlgorithmsSettings();
             // set default internal settings
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
             DefaultTimeout = PluginInternalSettings.DefaultTimeout;
@@ -21,22 +23,23 @@ namespace ZEnemy
             // https://bitcointalk.org/index.php?topic=3378390.0
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
-                // github tag ver-2.3
-                BinVersion = "2.3-win-cuda10.1", // fix version if wrong
+                // NO MORE GITHUB TAG!!!
+                BinVersion = "2.4-win-cuda10.1", // fix version if wrong
                 ExePath = new List<string> { "z-enemy.exe" },
                 Urls = new List<string>
                 {
-                    "https://github.com/z-enemy/z-enemy/releases/download/ver-2.3/z-enemy-2.3-win-cuda10.1.zip" // original source
+                    "https://github.com/nicehash/MinerDownloads/releases/download/1.9.2.16plus/z-enemy-2.4-win-cuda10.1.zip",
+                    "https://mega.nz/#!UXRBCChJ!v7JqOCuvq4hl1XR76BGiC75Gq97vKSliuH2uKZvU1iQ" // original source
                 }
             };
             PluginMetaInfo = new PluginMetaInfo
             {
                 PluginDescription = "Zealot/Enemy (z-enemy) NVIDIA GPU miner.",
-                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+                SupportedDevicesAlgorithms = SupportedDevicesAlgorithmsDict()
             };
         }
 
-        public override Version Version => new Version(3, 2);
+        public override Version Version => new Version(5, 1);
 
         public override string Name => "ZEnemy";
 
@@ -53,19 +56,11 @@ namespace ZEnemy
 
             foreach (var gpu in cudaGpus)
             {
-                var algos = GetSupportedAlgorithms(gpu).ToList();
+                var algos = GetSupportedAlgorithmsForDevice(gpu);
                 if (algos.Count > 0) supported.Add(gpu, algos);
             }
 
             return supported;
-        }
-
-        IReadOnlyList<Algorithm> GetSupportedAlgorithms(CUDADevice gpu)
-        {
-            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsNVIDIA(PluginUUID);
-            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
-            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
-            return filteredAlgorithms;
         }
 
         protected override MinerBase CreateMinerBase()

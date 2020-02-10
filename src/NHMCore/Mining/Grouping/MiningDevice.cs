@@ -10,16 +10,6 @@ namespace NHMCore.Mining.Grouping
         {
             Device = device;
 
-#if FORCE_MINING
-            foreach (var algo in Device.AlgorithmSettings)
-            {
-                if (algo.Enabled)
-                {
-                    algo.BenchmarkSpeed = 1000;
-                    Algorithms.Add(algo);
-                }
-            }
-#else
             foreach (var algo in Device.AlgorithmSettings)
             {
                 var isAlgoMiningCapable = GroupSetupUtils.IsAlgoMiningCapable(algo);
@@ -28,7 +18,6 @@ namespace NHMCore.Mining.Grouping
                     Algorithms.Add(algo);
                 }
             }
-#endif
         }
 
 
@@ -61,7 +50,7 @@ namespace NHMCore.Mining.Grouping
                 var mostProfitableIndex = GetMostProfitableIndex();
                 if (mostProfitableIndex > -1)
                 {
-                    return Algorithms[mostProfitableIndex].CurrentProfit;
+                    return Algorithms[mostProfitableIndex].CurrentNormalizedProfit;
                 }
 
                 return 0;
@@ -75,7 +64,7 @@ namespace NHMCore.Mining.Grouping
                 var mostProfitableIndex = GetPrevProfitableIndex();
                 if (mostProfitableIndex > -1)
                 {
-                    return Algorithms[mostProfitableIndex].CurrentProfit;
+                    return Algorithms[mostProfitableIndex].CurrentNormalizedProfit;
                 }
 
                 return 0;
@@ -119,16 +108,16 @@ namespace NHMCore.Mining.Grouping
             // calculate new profits
             foreach (var algo in Algorithms)
             {
-                algo.UpdateCurProfit(profits);
+                algo.UpdateCurrentNormalizedProfit(profits);
             }
 
             // find max paying value and save key
             double maxProfit = double.NegativeInfinity;
             foreach (var algo in Algorithms)
             {
-                if (maxProfit < algo.CurrentProfit)
+                if (maxProfit < algo.CurrentNormalizedProfit)
                 {
-                    maxProfit = algo.CurrentProfit;
+                    maxProfit = algo.CurrentNormalizedProfit;
                     MostProfitableAlgorithmStringID = algo.AlgorithmStringID;
                 }
             }

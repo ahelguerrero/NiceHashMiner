@@ -15,11 +15,11 @@ using System.Threading.Tasks;
 
 namespace Ethlargement
 {
-    public class Ethlargement : IMinerPlugin, IInitInternals, IBackroundService, IBinaryPackageMissingFilesChecker, IMinerBinsSource
+    public class Ethlargement : NotifyChangedBase, IMinerPlugin, IInitInternals, IBackroundService, IBinaryPackageMissingFilesChecker, IMinerBinsSource
     {
         public virtual string PluginUUID => "efd40691-618c-491a-b328-e7e020bda7a3";
 
-        public Version Version => new Version(1, 2);
+        public Version Version => new Version(1, 4);
         public string Name => "Ethlargement";
 
         public string Author => "info@nicehash.com";
@@ -39,11 +39,15 @@ namespace Ethlargement
         // register in GetSupportedAlgorithms and filter in InitInternals
         private static Dictionary<string, string> _registeredSupportedDevices = new Dictionary<string, string>();
 
-        private static List<AlgorithmType> _supportedAlgorithms = new List<AlgorithmType> { AlgorithmType.DaggerHashimoto, AlgorithmType.MTP };
+        private static List<AlgorithmType> _supportedAlgorithms = new List<AlgorithmType> { AlgorithmType.DaggerHashimoto, AlgorithmType.MTP, AlgorithmType.Eaglesong };
 
         private bool IsServiceDisabled => !ServiceEnabled && _registeredSupportedDevices.Count > 0;
 
         private static Dictionary<string, AlgorithmType> _devicesUUIDActiveAlgorithm = new Dictionary<string, AlgorithmType>();
+
+        private static bool ShouldRun => _devicesUUIDActiveAlgorithm.Any(kvp => _supportedAlgorithms.Contains(kvp.Value));
+
+        public bool SystemContainsSupportedDevices => _registeredSupportedDevices.Count > 0;
 
         private static object _startStopLock = new object();
 
@@ -51,7 +55,11 @@ namespace Ethlargement
         {
             lock (_startStopLock)
             {
-                if (IsServiceDisabled) return;
+                if (IsServiceDisabled)
+                {
+                    StopEthlargementProcess();
+                    return;
+                }
 
                 // check if any mining pair is supported and set current active 
                 var supportedUUIDs = _registeredSupportedDevices.Select(kvp => kvp.Key);
@@ -64,8 +72,8 @@ namespace Ethlargement
                     var algorithmType = pair.Algorithm.FirstAlgorithmType;
                     _devicesUUIDActiveAlgorithm[uuid] = algorithmType;
                 }
-                var shouldRun = _devicesUUIDActiveAlgorithm.Any(kvp => _supportedAlgorithms.Contains(kvp.Value));
-                if (shouldRun)
+
+                if (ShouldRun)
                 {
                     StartEthlargementProcess();
                 }
@@ -80,7 +88,11 @@ namespace Ethlargement
         {
             lock (_startStopLock)
             {
-                if (IsServiceDisabled) return;
+                if (IsServiceDisabled)
+                {
+                    StopEthlargementProcess();
+                    return;
+                }
 
                 var stopAll = miningPairs == null;
                 // stop all
@@ -104,8 +116,7 @@ namespace Ethlargement
                     {
                         _devicesUUIDActiveAlgorithm[uuid] = AlgorithmType.NONE;
                     }
-                    var shouldRun = _devicesUUIDActiveAlgorithm.Any(kvp => _supportedAlgorithms.Contains(kvp.Value));
-                    if (!shouldRun)
+                    if (!ShouldRun)
                     {
                         StopEthlargementProcess();
                     }
@@ -116,15 +127,23 @@ namespace Ethlargement
         public virtual string EthlargementBinPath()
         {
             var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), PluginUUID);
-            var pluginRootBins = Path.Combine(pluginRoot, "bins");
+            var pluginRootBins = Path.Combine(pluginRoot, "bins", $"{Version.Major}.{Version.Minor}");
             var binPath = Path.Combine(pluginRootBins, "OhGodAnETHlargementPill-r2.exe");
             return binPath;
+        }
+
+        public virtual string EthlargementCwdPath()
+        {
+            var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), PluginUUID);
+            var pluginRootBins = Path.Combine(pluginRoot, "bins", $"{Version.Major}.{Version.Minor}");
+            return pluginRootBins;
         }
 
 
         #region Ethlargement Process
 
         private static string _ethlargementBinPath = "";
+        private static string _ethlargementCwdPath = "";
 
         private static Process _ethlargementProcess = null;
 
@@ -147,8 +166,7 @@ namespace Ethlargement
             await Task.Delay(1000);
             // TODO add delay and check if it is running
             // lock and check
-            var shouldRun = _devicesUUIDActiveAlgorithm.Any(kvp => kvp.Value == AlgorithmType.DaggerHashimoto);
-            if (shouldRun)
+            if (ShouldRun)
             {
                 StartEthlargementProcess();
             }
@@ -157,16 +175,8 @@ namespace Ethlargement
         private static void StartEthlargementProcess()
         {
             if (IsEthlargementProcessRunning() == true) return;
-
-            _ethlargementProcess = new Process
-            {
-                StartInfo =
-                {
-                    FileName = _ethlargementBinPath,
-                    //CreateNoWindow = false
-                },
-                EnableRaisingEvents = true
-            };
+            
+            _ethlargementProcess = MinerToolkit.CreateMiningProcess(_ethlargementBinPath, _ethlargementCwdPath, "", null);
             _ethlargementProcess.Exited += ExitEvent;
 
             try
@@ -227,10 +237,11 @@ namespace Ethlargement
 
         #region Internal settings
 
-        public void InitInternals()
+        public virtual void InitInternals()
         {
             // set ethlargement path
             _ethlargementBinPath = EthlargementBinPath();
+            _ethlargementCwdPath = EthlargementCwdPath();
 
             var pluginRoot = Path.Combine(Paths.MinerPluginsPath(), PluginUUID);
 
@@ -253,6 +264,7 @@ namespace Ethlargement
                 }
             }
             if (_ethlargementSettings.SupportedAlgorithms != null) _supportedAlgorithms = _ethlargementSettings.SupportedAlgorithms;
+            OnPropertyChanged(nameof(SystemContainsSupportedDevices));
         }
 
         protected SupportedDevicesSettings _ethlargementSettings = new SupportedDevicesSettings

@@ -4,10 +4,12 @@ using NHM.Common.Enums;
 using NHM.DeviceMonitoring;
 using NHM.DeviceMonitoring.TDP;
 using NHM.UUID;
+using NHMCore.ApplicationState;
 using NHMCore.Configs;
 using NHMCore.Configs.Data;
-using NHMCore.Stats;
+using NHMCore.Nhmws;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 
 namespace NHMCore.Mining
@@ -36,10 +38,11 @@ namespace NHMCore.Mining
         public bool Enabled
         {
             get => _enabled;
-            set
+            internal set
             {
                 if (value == _enabled) return;
                 _enabled = value;
+                StartState = false;
                 State = value ? DeviceState.Stopped : DeviceState.Disabled;
                 OnPropertyChanged();
             }
@@ -58,9 +61,11 @@ namespace NHMCore.Mining
                 _state = value;
                 MiningState.Instance.CalculateDevicesStateChange();
                 OnPropertyChanged();
-                NiceHashStats.NotifyStateChangedTask();
+                NHWebSocket.NotifyStateChanged();
             }
         }
+
+        internal bool StartState { get; set; } = false;
 
         private readonly object _lock = new object();
         private bool _isPendingChange { get; set; } = false;
@@ -108,9 +113,26 @@ namespace NHMCore.Mining
             }
         }
 
-        public List<AlgorithmContainer> AlgorithmSettings { get; protected set; } = new List<AlgorithmContainer>();
+        private List<AlgorithmContainer> _algorithmSettings { get; set; } = new List<AlgorithmContainer>();
+        public List<AlgorithmContainer> AlgorithmSettings
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _algorithmSettings;
+                }
+            }
+            protected set
+            {
+                lock (_lock)
+                {
+                    _algorithmSettings = value;
+                }
+            }
+        }
 
-        public List<PluginAlgorithmConfig> PluginAlgorithmSettings { get; protected set; } = new List<PluginAlgorithmConfig>();
+        private List<PluginAlgorithmConfig> PluginAlgorithmSettings { get; set; } = new List<PluginAlgorithmConfig>();
 
         public double MinimumProfit { get; set; }
 
@@ -129,7 +151,7 @@ namespace NHMCore.Mining
         {
             get
             {
-                if (!ConfigManager.GeneralConfig.DisableDevicePowerModeSettings && DeviceMonitor != null && DeviceMonitor is IPowerTarget get) return get.PowerTarget;
+                if (!GlobalDeviceSettings.Instance.DisableDevicePowerModeSettings && DeviceMonitor != null && DeviceMonitor is IPowerTarget get) return get.PowerTarget;
                 //throw new NotSupportedException($"Device with {Uuid} doesn't support PowerTarget");
                 return 0;
             }
@@ -151,7 +173,7 @@ namespace NHMCore.Mining
         {
             get
             {
-                if (!ConfigManager.GeneralConfig.DisableDeviceStatusMonitoring && DeviceMonitor != null && DeviceMonitor is ILoad get) return get.Load;
+                if (!GlobalDeviceSettings.Instance.DisableDeviceStatusMonitoring && DeviceMonitor != null && DeviceMonitor is ILoad get) return get.Load;
                 return -1;
             }
         }
@@ -159,7 +181,7 @@ namespace NHMCore.Mining
         {
             get
             {
-                if (!ConfigManager.GeneralConfig.DisableDeviceStatusMonitoring && DeviceMonitor != null && DeviceMonitor is ITemp get) return get.Temp;
+                if (!GlobalDeviceSettings.Instance.DisableDeviceStatusMonitoring && DeviceMonitor != null && DeviceMonitor is ITemp get) return get.Temp;
                 return -1;
             }
         }
@@ -167,7 +189,7 @@ namespace NHMCore.Mining
         {
             get
             {
-                if (!ConfigManager.GeneralConfig.DisableDeviceStatusMonitoring && DeviceMonitor != null && DeviceMonitor is IFanSpeedRPM get) return get.FanSpeedRPM;
+                if (!GlobalDeviceSettings.Instance.DisableDeviceStatusMonitoring && DeviceMonitor != null && DeviceMonitor is IFanSpeedRPM get) return get.FanSpeedRPM;
                 return -1;
             }
         }
@@ -175,7 +197,7 @@ namespace NHMCore.Mining
         {
             get
             {
-                if (!ConfigManager.GeneralConfig.DisableDeviceStatusMonitoring && DeviceMonitor != null && DeviceMonitor is IPowerUsage get) return get.PowerUsage;
+                if (!GlobalDeviceSettings.Instance.DisableDeviceStatusMonitoring && DeviceMonitor != null && DeviceMonitor is IPowerUsage get) return get.PowerUsage;
                 return -1;
             }
         }
@@ -184,7 +206,7 @@ namespace NHMCore.Mining
         {
             get
             {
-                var canSet = !ConfigManager.GeneralConfig.DisableDevicePowerModeSettings && DeviceMonitor != null && DeviceMonitor is ITDP;
+                var canSet = !GlobalDeviceSettings.Instance.DisableDevicePowerModeSettings && DeviceMonitor != null && DeviceMonitor is ITDP;
                 return canSet;
             }
         }
@@ -194,7 +216,7 @@ namespace NHMCore.Mining
 
         public bool SetPowerMode(TDPSimpleType level)
         {
-            if (!ConfigManager.GeneralConfig.DisableDevicePowerModeSettings && DeviceMonitor != null && DeviceMonitor is ITDP set)
+            if (!GlobalDeviceSettings.Instance.DisableDevicePowerModeSettings && DeviceMonitor != null && DeviceMonitor is ITDP set)
             {
                 return set.SetTDPSimple(level);
             }
@@ -213,12 +235,31 @@ namespace NHMCore.Mining
             Index = index;
             NameCount = nameCount;
             Enabled = true;
+
+            GlobalDeviceSettings.Instance.PropertyChanged += OnShowGPUPCIeBusIDs;
+            this.PropertyChanged += BenchmarkManagerState.Instance.ComputeDeviceOnPropertyChanged;
+        }
+
+        public void UpdateEstimatePaying(Dictionary<AlgorithmType, double> paying)
+        {
+            foreach (var algo in AlgorithmSettings)
+            {
+                algo.UpdateEstimatedProfit(paying);
+            }
+        }
+
+        private void OnShowGPUPCIeBusIDs(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(GlobalDeviceSettings.ShowGPUPCIeBusIDs))
+            {
+                OnPropertyChanged(nameof(FullName));
+            }
         }
 
         // combines long and short name
         public string GetFullName()
         {
-            if (ConfigManager.GeneralConfig.ShowGPUPCIeBusIDs && BaseDevice is IGpuDevice gpu)
+            if (GlobalDeviceSettings.Instance.ShowGPUPCIeBusIDs && BaseDevice is IGpuDevice gpu)
             {
                 return $"{NameCount} {Name} (pcie {gpu.PCIeBusID})";
             }
@@ -227,24 +268,50 @@ namespace NHMCore.Mining
 
         public void RemovePluginAlgorithms(string pluginUUID)
         {
+            // get all data from file configs 
+            var pluginConfs = GetDeviceConfig().PluginAlgorithmSettings.Where(c => c.PluginUUID == pluginUUID);
+            foreach (var pluginConf in pluginConfs)
+            {
+                // check and update from the chache
+                var removeIndexAt = PluginAlgorithmSettings.FindIndex(algo => algo.GetAlgorithmStringID() == pluginConf.GetAlgorithmStringID());
+                // remove old if any
+                if (removeIndexAt > -1)
+                {
+                    PluginAlgorithmSettings.RemoveAt(removeIndexAt);
+                }
+                // cahce pluginConf
+                PluginAlgorithmSettings.Add(pluginConf);
+            }
+
             // TODO save removed algorithm configs
             var toRemove = AlgorithmSettings.Where(algo => algo.Algorithm.MinerID == pluginUUID);
             if (toRemove.Count() == 0) return;
+            foreach (var removeAlgo in toRemove)
+            {
+                BenchmarkManagerState.Instance.RemoveAlgorithmContainer(removeAlgo);
+            }
             var newList = AlgorithmSettings.Where(algo => toRemove.Contains(algo) == false).ToList();
             AlgorithmSettings = newList;
+            OnPropertyChanged(nameof(AlgorithmSettings));
         }
 
-        public void RemovePluginAlgorithms(IEnumerable<AlgorithmContainer> algos)
-        {
-            foreach (var algo in algos)
-            {
-                AlgorithmSettings.Remove(algo);
-            }
-        }
+        //public void RemovePluginAlgorithms(IEnumerable<AlgorithmContainer> algos)
+        //{
+        //    foreach (var algo in algos)
+        //    {
+        //        AlgorithmSettings.Remove(algo);
+        //    }
+        //    OnPropertyChanged(nameof(AlgorithmSettings));
+        //}
 
         public void AddPluginAlgorithms(IEnumerable<AlgorithmContainer> algos)
         {
             AlgorithmSettings.AddRange(algos);
+            foreach (var addAlgo in algos)
+            {
+                BenchmarkManagerState.Instance.AddAlgorithmContainer(addAlgo);
+            }
+            OnPropertyChanged(nameof(AlgorithmSettings));
         }
 
         public void CopyBenchmarkSettingsFrom(ComputeDevice copyBenchCDev)
@@ -265,6 +332,19 @@ namespace NHMCore.Mining
         public AlgorithmContainer GetAlgorithm(string minerUUID, params AlgorithmType[] ids)
         {
             return AlgorithmSettings.FirstOrDefault(a => a.MinerUUID == minerUUID && !a.IDs.Except(ids).Any());
+        }
+
+        public PluginAlgorithmConfig GetPluginAlgorithmConfig(string algorithmStringID)
+        {
+            var configs = GetDeviceConfig();
+            // try get data from configs
+            var pluginConf = configs.PluginAlgorithmSettings.Where(c => c.GetAlgorithmStringID() == algorithmStringID).FirstOrDefault();
+            if (pluginConf == null)
+            {
+                // get cahced data
+                pluginConf = PluginAlgorithmSettings.Where(c => c.GetAlgorithmStringID() == algorithmStringID).FirstOrDefault();
+            }
+            return pluginConf;
         }
 
         #region Config Setters/Getters
@@ -428,7 +508,7 @@ namespace NHMCore.Mining
 
         public bool AllEnabledAlgorithmsZeroPaying()
         {
-            var isAllZeroPayingState = AlgorithmSettings.Where(a => a.Enabled).Select(a => a.CurPayingRate == 0d);
+            var isAllZeroPayingState = AlgorithmSettings.Where(a => a.Enabled).Select(a => a.CurrentEstimatedProfit <= 0d);
             var ret = isAllZeroPayingState.All(t => t);
             return ret;
         }

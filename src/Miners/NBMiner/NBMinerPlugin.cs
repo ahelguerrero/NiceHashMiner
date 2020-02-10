@@ -12,10 +12,12 @@ using System.Threading.Tasks;
 
 namespace NBMiner
 {
-    public class NBMinerPlugin : PluginBase, IDevicesCrossReference
+    public partial class NBMinerPlugin : PluginBase, IDevicesCrossReference
     {
         public NBMinerPlugin()
         {
+            // mandatory init
+            InitInsideConstuctorPluginSupportedAlgorithmsSettings();
             // set default internal settings
             MinerOptionsPackage = PluginInternalSettings.MinerOptionsPackage;
             DefaultTimeout = PluginInternalSettings.DefaultTimeout;
@@ -23,23 +25,23 @@ namespace NBMiner
             // https://github.com/NebuTech/NBMiner/releases/ 
             MinersBinsUrlsSettings = new MinersBinsUrlsSettings
             {
-                BinVersion = "v26.0",
+                BinVersion = "v26.2",
                 ExePath = new List<string> { "NBMiner_Win", "nbminer.exe" },
                 Urls = new List<string>
                 {
-                    "https://github.com/NebuTech/NBMiner/releases/download/v26.0/NBMiner_26.0_Win.zip", // original
+                    "https://github.com/NebuTech/NBMiner/releases/download/v26.2/NBMiner_26.2_Win.zip", // original
                 }
             };
             PluginMetaInfo = new PluginMetaInfo
             {
                 PluginDescription = "GPU Miner for GRIN and AE mining.",
-                SupportedDevicesAlgorithms = PluginSupportedAlgorithms.SupportedDevicesAlgorithmsDict()
+                SupportedDevicesAlgorithms = SupportedDevicesAlgorithmsDict()
             };
         }
 
         public override string PluginUUID => "6c07f7a0-7237-11e9-b20c-f9f12eb6d835";
 
-        public override Version Version => new Version(3, 2);
+        public override Version Version => new Version(5, 0);
         public override string Name => "NBMiner";
 
         public override string Author => "info@nicehash.com";
@@ -82,19 +84,11 @@ namespace NBMiner
             {
                 _mappedIDs[gpu.UUID] = pcieID;
                 ++pcieID;
-                var algos = GetSupportedAlgorithms(gpu).ToList();
+                var algos = GetSupportedAlgorithmsForDevice(gpu);
                 if (algos.Count > 0) supported.Add(gpu, algos);
             }
 
             return supported;
-        }
-
-        private IEnumerable<Algorithm> GetSupportedAlgorithms(CUDADevice gpu)
-        {
-            var algorithms = PluginSupportedAlgorithms.GetSupportedAlgorithmsNVIDIA(PluginUUID);
-            if (PluginSupportedAlgorithms.UnsafeLimits(PluginUUID)) return algorithms;
-            var filteredAlgorithms = Filters.FilterInsufficientRamAlgorithmsList(gpu.GpuRam, algorithms);
-            return filteredAlgorithms;
         }
 
         protected override MinerBase CreateMinerBase()

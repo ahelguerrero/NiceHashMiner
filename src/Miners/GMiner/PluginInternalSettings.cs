@@ -7,7 +7,7 @@ namespace GMinerPlugin
 {
     internal static class PluginInternalSettings
     {
-        internal static TimeSpan DefaultTimeout = new TimeSpan(0, 2, 0);
+        internal static TimeSpan DefaultTimeout = new TimeSpan(1, 15, 0);
 
         internal static MinerApiMaxTimeoutSetting GetApiMaxTimeoutConfig = new MinerApiMaxTimeoutSetting
         {
@@ -48,6 +48,24 @@ namespace GMinerPlugin
                     DefaultValue = "1"
                 },
                 /// <summary>
+                /// enable/disable CUDA platform
+                /// </summary>
+                new MinerOption
+                {
+                    Type = MinerOptionType.OptionWithSingleParameter,
+                    ID = "gminer_cuda",
+                    LongName = "--cuda=",
+                },
+                /// <summary>
+                /// enable/disable OpenCL platform
+                /// </summary>
+                new MinerOption
+                {
+                    Type = MinerOptionType.OptionWithSingleParameter,
+                    ID = "gminer_opencl",
+                    LongName = "--opencl=",
+                },
+                /// <summary>
                 /// pass cost of electricity in USD per kWh, miner will report $ spent to mining
                 /// </summary>
                 new MinerOption
@@ -76,6 +94,16 @@ namespace GMinerPlugin
                     ID = "gminer_logfile",
                     ShortName = "-l",
                     LongName = "--logfile"
+                },
+                /// <summary>
+                /// enable/disable color output
+                /// </summary>
+                new MinerOption
+                {
+                    Type = MinerOptionType.OptionWithSingleParameter,
+                    ID = "gminer_color",
+                    ShortName = "-c",
+                    LongName = "--color="
                 },
                 /// <summary>
                 /// space-separated list of OC modes for each device

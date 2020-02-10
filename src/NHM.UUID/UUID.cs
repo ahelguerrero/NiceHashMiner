@@ -23,8 +23,10 @@ namespace NHM.UUID
             return b64Web;
         }
 
+        private static string _deviceB64UUID = null;
         public static string GetDeviceB64UUID(bool showInfoToHash = false)
         {
+            if (_deviceB64UUID != null) return _deviceB64UUID;
             var cpuSerial = GetCpuID();
             var macUUID = WindowsMacUtils.GetMAC_UUID();
             var guid = GetMachineGuidOrFallback();
@@ -37,7 +39,8 @@ namespace NHM.UUID
             }
             Logger.Info("NHM.UUID", $"infoToHash='{infoToHash}'");
             var hexUuid = GetHexUUID(infoToHash);
-            return $"{0}-{GetB64UUID(hexUuid)}";
+            _deviceB64UUID = $"{0}-{GetB64UUID(hexUuid)}";
+            return _deviceB64UUID;
         }
 
         public static string GetMachineGuidOrFallback()
@@ -46,6 +49,7 @@ namespace NHM.UUID
             const string keyPath = hklm + @"\SOFTWARE\Microsoft\Cryptography";
             const string value = "MachineGuid";
 
+            // main deterministic
             try
             {
                 var readValue = Registry.GetValue(keyPath, value, new object());
@@ -55,6 +59,32 @@ namespace NHM.UUID
             {
                 Logger.Error("NHM.UUID", $"GetMachineGuid: {e.Message}");
             }
+            // fallback deterministic
+            try
+            {
+                //const string userKeyPath = @"Software\" + "";
+                const string valueFallback = "MachineGuidNhmGen";
+                using (var rkFallback = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\" + APP_GUID.GUID, true))
+                {
+                    var fallbackUUIDValue = rkFallback.GetValue(valueFallback, null);
+                    string genUUID = "";
+                    if (fallbackUUIDValue == null)
+                    {
+                        genUUID = System.Guid.NewGuid().ToString();
+                        rkFallback?.SetValue(valueFallback, genUUID);
+                    }
+                    else if (fallbackUUIDValue is string regUUID)
+                    {
+                        genUUID = regUUID;
+                    }
+                    return genUUID;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Error("NHM.UUID", $"Fallback: {e.Message}");
+            }
+            // last resort fallback always different 
             // fallback
             Logger.Warn("NHM.UUID", $"GetMachineGuid FALLBACK");
             return System.Guid.NewGuid().ToString();

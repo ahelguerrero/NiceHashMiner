@@ -59,26 +59,6 @@ namespace NHMCore
             }
         }
 
-        #region MinerStatsCheck
-        private static AppTimer _minerStatsCheck;
-
-        private static void StartMinerStatsCheckTimer()
-        {
-            if (_minerStatsCheck?.IsActive ?? false) return;
-            _minerStatsCheck = new AppTimer(async (object sender, ElapsedEventArgs e) =>
-            {
-                await MiningManager.MinerStatsCheck();
-            },
-            ConfigManager.GeneralConfig.MinerAPIQueryInterval * 1000);
-            _minerStatsCheck.Start();
-        }
-
-        private static void StopMinerStatsCheckTimer()
-        {
-            _minerStatsCheck?.Stop();
-        }
-        #endregion MinerStatsCheck
-
 
         #region ComputeDevicesCheck Lost GPU check
         private static AppTimer _cudaDeviceCheckerTimer;
@@ -87,7 +67,7 @@ namespace NHMCore
         {
             if (_cudaDeviceCheckerTimer?.IsActive ?? false) return;
             _cudaDeviceCheckerTimer = new AppTimer(async (object sender, ElapsedEventArgs e) => {
-                if (!ConfigManager.GeneralConfig.RunScriptOnCUDA_GPU_Lost)
+                if (!GlobalDeviceSettings.Instance.RunScriptOnCUDA_GPU_Lost)
                     return;
                 // this function checks if count of CUDA devices is same as it was on application start, reason for that is
                 // because of some reason (especially when algo switching occure) CUDA devices are dissapiring from system
@@ -124,46 +104,6 @@ namespace NHMCore
         }
         #endregion ComputeDevicesCheck Lost GPU check
 
-        #region PreventSystemSleepTimer
-        private static AppTimer _preventSleepTimer;
-
-        private static void StartPreventSleepTimer()
-        {
-            if (_preventSleepTimer?.IsActive ?? false) return;
-            // sleep time setting is minimal 1 minute
-            _preventSleepTimer = new AppTimer((s, e) => {
-                PInvokeHelpers.PreventSleep();
-            },
-            20 * 1000);// leave this interval, it works
-            _preventSleepTimer.Start();
-        }
-
-        // restroe/enable sleep
-        private static void StopPreventSleepTimer()
-        {
-            _preventSleepTimer?.Stop();
-        }
-        #endregion PreventSystemSleepTimer
-
-        #region RefreshDeviceListView timer
-        private static AppTimer _refreshDeviceListViewTimer;
-
-        public static void StartRefreshDeviceListViewTimer()
-        {
-            if (_refreshDeviceListViewTimer?.IsActive ?? false) return;
-            _refreshDeviceListViewTimer = new AppTimer((object sender, ElapsedEventArgs e) => {
-                RefreshDeviceListView?.Invoke(sender, EventArgs.Empty);
-            },
-            2000);
-            _refreshDeviceListViewTimer.Start();
-        }
-        
-        private static void StopRefreshDeviceListViewTimer()
-        {
-            _refreshDeviceListViewTimer?.Stop();
-        }
-        #endregion RefreshDeviceListView timer
-
         #region InternetCheck timer
         private static AppTimer _internetCheckTimer;
 
@@ -171,7 +111,7 @@ namespace NHMCore
 
         public static void StartInternetCheckTimer()
         {
-            if (ConfigManager.GeneralConfig.IdleWhenNoInternetAccess)
+            if (IdleMiningSettings.Instance.IdleWhenNoInternetAccess)
             {
                 OnInternetCheck?.Invoke(null, Helpers.IsConnectedToInternet());
             }
@@ -179,7 +119,7 @@ namespace NHMCore
             if (_internetCheckTimer?.IsActive ?? false) return;
             _internetCheckTimer = new AppTimer((object sender, ElapsedEventArgs e) =>
             {
-                if (ConfigManager.GeneralConfig.IdleWhenNoInternetAccess)
+                if (IdleMiningSettings.Instance.IdleWhenNoInternetAccess)
                 {
                     OnInternetCheck?.Invoke(null, Helpers.IsConnectedToInternet());
                 }

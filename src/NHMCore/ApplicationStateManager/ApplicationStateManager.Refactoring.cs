@@ -1,29 +1,11 @@
 using NHMCore.Configs;
-using NHMCore.Interfaces;
 using NHMCore.Mining;
+using System;
 
 namespace NHMCore
 {
     static partial class ApplicationStateManager
     {
-        #region TODO temporary IRatesComunication / refactoring
-        // TODO temporary
-        public static IRatesComunication _ratesComunication = null; // for now should only have one of these
-
-        public static void ClearRatesAll()
-        {
-            // Quickfix
-            MiningStats.ClearApiDataGroups();
-
-            _ratesComunication?.ClearRatesAll();
-        }
-
-        public static void RefreshRates()
-        {
-            _ratesComunication?.RefreshRates();
-        }
-        #endregion
-
         #region Set Mining Profitable or NOT Profitable
         //// TODO we got a problem here with displaying and sending IFTTT stuff, since we can start/stop 
         //private static bool isProfitable = false;
@@ -32,14 +14,15 @@ namespace NHMCore
         {
             if (isProfitable)
             {
-                if (ConfigManager.GeneralConfig.UseIFTTT)
+                if (IFTTTSettings.Instance.UseIFTTT)
                 {
                     Ifttt.PostToIfttt("nicehash", "Mining is once again profitable and has resumed.");
                 }
                 DisplayMiningProfitable(isProfitable);
-            } else
+            }
+            else
             {
-                if (ConfigManager.GeneralConfig.UseIFTTT)
+                if (IFTTTSettings.Instance.UseIFTTT)
                 {
                     Ifttt.PostToIfttt("nicehash", "CURRENTLY MINING NOT PROFITABLE.");
                 }
@@ -48,19 +31,20 @@ namespace NHMCore
         }
         #endregion
 
+        // TODO put in mining profit state 
         public static void DisplayTotalRate(double totalMiningRate)
         {
-            DisplayGlobalMiningRate?.Invoke(null, totalMiningRate);
+            //DisplayGlobalMiningRate?.Invoke(null, totalMiningRate);
         }
-
+        // TODO put in mining profit state
         public static void DisplayMiningProfitable(bool isProfitable)
         {
-            _DisplayMiningProfitability?.Invoke(null, isProfitable);
+            //_DisplayMiningProfitability?.Invoke(null, isProfitable);
         }
-
+        // TODO put in app state
         public static void DisplayNoInternetConnection(bool noInternet)
         {
-            _DisplayNoInternetConnection?.Invoke(null, noInternet);
+            //_DisplayNoInternetConnection?.Invoke(null, noInternet);
         }
     }
 }
